@@ -82,7 +82,7 @@ function changelogHtml(log) {
     const when = formatTime(entry.at);
     return `<li>${escapeHtml(entry.displayName || "老師")}：${escapeHtml(entry.summary || "已修改")}${when ? ` · ${escapeHtml(when)}` : ""}</li>`;
   }).join("");
-  return `<details class="text-sm text-slate-600"><summary class="cursor-pointer font-bold">修改紀錄</summary><ul class="mt-1 space-y-1 list-disc pl-5">${items}</ul></details>`;
+  return `<details class="text-xs text-slate-400"><summary class="cursor-pointer">修改紀錄</summary><ul class="mt-1 space-y-0.5 list-disc pl-4">${items}</ul></details>`;
 }
 
 function voteButtonsHtml(item, maxScore) {
@@ -170,62 +170,63 @@ export function renderPendingHtml(state) {
   return { label, countText: `${cases.length} 題待投票`, empty: false, html };
 }
 
+function criterionMeta(rule) {
+  const when = formatTime(rule.createdAt).replace(/:\d{2}$/, "");
+  const label = rule.sourceLabel || rule.createdBy?.displayName || "";
+  if (rule.source === "seed") return label;
+  return [label, when].filter(Boolean).join(" · ");
+}
+
 export function renderLadderHtml(state) {
   const part = state.parts.find((item) => item.id === state.activeSubPartId);
-  if (!part) return { heading: "📊 扣分階梯對照板", html: "" };
-  const orderedParts = [...state.parts].sort(byOrder);
-  const partIndex = orderedParts.findIndex((item) => item.id === part.id);
+  if (!part) return { heading: "", html: "" };
   const maxScore = Number(part.maxScore) || 0;
-  const heading = `📊 第 ${partIndex + 1} 部分「${part.name}（佔 ${maxScore} 分）」扣分階梯對照板`;
   if (!state.childrenReady) {
-    return { heading, gridClass: ladderGridClass(maxScore), html: `<div class="text-slate-600 font-bold">正在載入扣分階梯…</div>` };
+    return { heading: "", gridClass: ladderGridClass(maxScore), html: `<div class="text-sm text-slate-500 font-bold">正在載入扣分欄…</div>` };
   }
   const criteria = [...state.criteria].sort(byNewest);
   let html = "";
   for (let deduction = 0; deduction <= maxScore; deduction += 1) {
     const info = getDeductionBadgeInfo(deduction, maxScore);
+    const actual = Math.max(0, maxScore - deduction);
     const rules = criteria.filter((item) => Number(item.deduction) === deduction);
+    const mark = deduction === 0 ? "🟢" : deduction >= maxScore ? "🔴" : "🟡";
     const cards = rules.length
       ? rules.map((rule) => `
-          <article class="animate-card ${info.cardBorder} border-2 rounded-2xl p-4 space-y-2.5">
-            <div class="flex items-center justify-between gap-2">
-              <span class="inline-block bg-white text-slate-900 border border-slate-300 font-black text-xs sm:text-sm px-2.5 py-0.5 rounded-lg">${escapeHtml(rule.sourceLabel || "標準")}</span>
-              <div class="flex items-center gap-1.5 shrink-0">
-                <button type="button" data-action="open-edit" data-type="rule" data-id="${escapeHtml(rule.id)}" class="bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold text-sm px-2.5 py-1 rounded-xl cursor-pointer">✏️ 修改／調整扣分</button>
-                <button type="button" data-action="ask-delete" data-type="rule" data-id="${escapeHtml(rule.id)}" class="bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm px-2.5 py-1 rounded-xl cursor-pointer" title="刪除此判例">🗑️</button>
+          <article class="animate-card ${info.cardBorder} border rounded-xl p-2.5 space-y-1">
+            <div class="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">${escapeHtml(rule.text)}</div>
+            ${rule.reason ? `<div class="text-xs sm:text-sm text-slate-600 leading-snug">💡 ${escapeHtml(rule.reason)}</div>` : ""}
+            ${rule.note ? `<div class="text-xs text-slate-500">🏷️ ${escapeHtml(rule.note)}</div>` : ""}
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <div class="min-w-0 text-[11px] leading-tight text-slate-400 truncate">${escapeHtml(criterionMeta(rule))}</div>
+              <div class="flex items-center shrink-0">
+                <button type="button" data-action="open-edit" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-slate-500 hover:text-slate-900 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="修改／調整扣分" aria-label="修改／調整扣分">✏️</button>
+                <button type="button" data-action="ask-delete" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="刪除此判例" aria-label="刪除此判例">🗑️</button>
               </div>
             </div>
-            <div class="text-[17px] sm:text-[18px] font-bold text-slate-900 leading-snug break-words">${escapeHtml(rule.text)}</div>
-            ${rule.reason ? `<div class="text-sm sm:text-base font-bold text-slate-700 bg-white/90 px-3 py-2 rounded-xl border border-slate-200/80">💡 ${escapeHtml(rule.reason)}</div>` : ""}
-            ${rule.note ? `<div class="inline-block bg-white text-slate-600 border border-slate-200 font-bold text-xs sm:text-sm px-2.5 py-0.5 rounded-lg">🏷️ 備註：${escapeHtml(rule.note)}</div>` : ""}
-            ${rule.createdBy && rule.source !== "seed" ? `<div class="text-xs font-bold text-slate-500">${escapeHtml(rule.createdBy.displayName || "")}${rule.createdAt ? ` · ${escapeHtml(formatTime(rule.createdAt))}` : ""}</div>` : ""}
             ${photoHtml(rule.photo, "rule", rule.id)}
             ${changelogHtml(rule.changelog)}
           </article>
         `).join("")
       : `
-        <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center space-y-1.5">
-          <div class="text-base font-bold text-slate-500">暫未有「${info.shortLabel}」標準或判例</div>
-          <p class="text-sm text-slate-400">可直接新增，或透過上載學生答案歸類。</p>
+        <div class="border border-dashed border-slate-200 rounded-xl px-3 py-4 text-center">
+          <div class="text-sm text-slate-400">未有${info.shortLabel}</div>
         </div>
       `;
     html += `
-      <div class="bg-white border-2 border-slate-200 rounded-3xl overflow-hidden flex flex-col">
-        <div class="${info.headerBg} border-b-2 px-5 py-4 flex items-start justify-between gap-2">
-          <div>
-            <h4 class="text-lg sm:text-xl font-black leading-snug">${info.colTitle}</h4>
-            <p class="text-sm font-bold opacity-85 mt-0.5">${info.colSubtitle}</p>
-          </div>
-          <span class="${info.badgeBg} font-black text-sm px-3 py-1 rounded-full shrink-0">${rules.length} 項</span>
+      <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
+        <div class="${info.headerBg} border-b px-3 py-2 flex items-center justify-between gap-2">
+          <h4 class="text-sm sm:text-base font-black leading-tight">${mark} ${info.shortLabel} · ${actual}/${maxScore}</h4>
+          <span class="${info.badgeBg} font-black text-xs px-2 py-0.5 rounded-full shrink-0">${rules.length}</span>
         </div>
-        <div class="p-4 sm:p-5 space-y-3.5">
+        <div class="p-2.5 space-y-2">
           ${cards}
-          <button type="button" data-action="open-direct" data-deduction="${deduction}" class="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50/60 text-slate-600 hover:text-blue-900 font-black text-base cursor-pointer">➕ 在【${info.shortLabel}】新增標準</button>
+          <button type="button" data-action="open-direct" data-deduction="${deduction}" class="w-full py-1.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50/60 text-slate-500 hover:text-blue-900 font-bold text-sm cursor-pointer">＋ ${info.shortLabel}</button>
         </div>
       </div>
     `;
   }
-  return { heading, gridClass: ladderGridClass(maxScore), html };
+  return { heading: "", gridClass: ladderGridClass(maxScore), html };
 }
 
 export function deductionChoicesHtml(maxScore, selected, action) {
@@ -343,7 +344,10 @@ export function fillBoard(state) {
   const ladder = renderLadderHtml(state);
   const ladderHeading = document.getElementById("ladder-section-heading");
   const ladderBox = document.getElementById("deduction-columns-container");
-  if (ladderHeading) ladderHeading.textContent = ladder.heading || "";
+  if (ladderHeading) {
+    ladderHeading.textContent = ladder.heading || "";
+    ladderHeading.classList.toggle("hidden", !ladder.heading);
+  }
   if (ladderBox) {
     ladderBox.className = ladder.gridClass || "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start";
     ladderBox.innerHTML = ladder.html || "";
