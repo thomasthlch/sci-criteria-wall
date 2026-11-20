@@ -16,10 +16,22 @@
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email != null
-        && (
-          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
-          || request.auth.token.email.lower() == 'thomasthlch@gmail.com'
-        );
+        && request.auth.token.email.lower() in [
+          'thomasthlch@gmail.com',
+          'laipuiyee@tswgps.edu.hk',
+          'wongwingyan@tswgps.edu.hk',
+          'chanpuishan@tswgps.edu.hk',
+          'wongpikkei@tswgps.edu.hk',
+          'aukamling@tswgps.edu.hk',
+          'leekaying@tswgps.edu.hk',
+          'chankailok@tswgps.edu.hk',
+          'chauhangfung@tswgps.edu.hk',
+          'chanshuion@tswgps.edu.hk',
+          'liyuenman@tswgps.edu.hk',
+          'lichihong@tswgps.edu.hk',
+          'cheunghin@tswgps.edu.hk',
+          'tsehiuhung@tswgps.edu.hk'
+        ];
     }
 
     // path=** 係 Path，冇 matches()。刪除要寫明路徑，唔好對 path 呼叫 matches。

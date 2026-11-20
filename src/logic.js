@@ -1,5 +1,16 @@
+import {
+  ADMIN_EMAIL,
+  isAllowedAccount,
+} from "./allowlist.js";
+
+export {
+  ADMIN_EMAIL,
+  WALL_ALLOWED_EMAILS,
+  WALL_TEACHER_EMAILS,
+  isAllowedAccount,
+} from "./allowlist.js";
+
 export const SCHOOL_DOMAIN = "tswgps.edu.hk";
-export const ADMIN_EMAIL = "thomasthlch@gmail.com";
 
 export const SEED_QUESTION_TITLES = {
   q1: "第 1 題：雞蛋模擬地球",
@@ -31,20 +42,6 @@ const KEYWORD_DICTIONARY = [
   "脫色",
   "殺死",
 ];
-
-export function isSchoolEmail(email, verified = true) {
-  if (!verified) return false;
-  if (typeof email !== "string") return false;
-  const normalized = email.trim().toLowerCase();
-  const suffix = `@${SCHOOL_DOMAIN}`;
-  return normalized.length > suffix.length && normalized.endsWith(suffix);
-}
-
-export function isAllowedAccount(email, verified = true) {
-  if (!verified || typeof email !== "string") return false;
-  const normalized = email.trim().toLowerCase();
-  return normalized === ADMIN_EMAIL || isSchoolEmail(normalized, true);
-}
 
 export function canDeleteQuestion(user, question) {
   if (!user?.uid || !question) return false;
@@ -387,7 +384,7 @@ export function friendlyAuthError(code) {
 export function explainDataError(error) {
   const code = error?.code || "";
   if (code === "permission-denied") {
-    return "讀寫被拒絕。請用已驗證的 @tswgps.edu.hk 學校帳戶或管理員帳戶。如果你剛剛發佈了規則，請重新整理頁面，再登入一次。";
+    return "讀寫被拒絕。請用已獲授權的科學科老師帳戶。如果你剛剛發佈了規則，請重新整理頁面，再登入一次。";
   }
   if (code === "unavailable") return "暫時連唔上 Firestore，請檢查網絡後再試。";
   return "讀取或儲存資料時發生問題，請稍後再試。";

@@ -4,17 +4,29 @@
 // 請把下面的 function 與 match 合併進「現有」Storage 規則，放在
 //   service firebase.storage { match /b/{bucket}/o { ... } }
 // 裡面、與其他 match 並列。Firebase Hosting 部署不在本專案範圍。
-// 已驗證學校帳戶，以及已驗證管理員 thomasthlch@gmail.com，可讀寫 sci_criteria_wall/。
+// 只限 src/allowlist.js 列出、而且 email_verified 的帳戶可讀寫 sci_criteria_wall/。
 // =============================================================================
 
     function sciCriteriaWallTeacher() {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email != null
-        && (
-          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
-          || request.auth.token.email.lower() == 'thomasthlch@gmail.com'
-        );
+        && request.auth.token.email.lower() in [
+          'thomasthlch@gmail.com',
+          'laipuiyee@tswgps.edu.hk',
+          'wongwingyan@tswgps.edu.hk',
+          'chanpuishan@tswgps.edu.hk',
+          'wongpikkei@tswgps.edu.hk',
+          'aukamling@tswgps.edu.hk',
+          'leekaying@tswgps.edu.hk',
+          'chankailok@tswgps.edu.hk',
+          'chauhangfung@tswgps.edu.hk',
+          'chanshuion@tswgps.edu.hk',
+          'liyuenman@tswgps.edu.hk',
+          'lichihong@tswgps.edu.hk',
+          'cheunghin@tswgps.edu.hk',
+          'tsehiuhung@tswgps.edu.hk'
+        ];
     }
 
     match /sci_criteria_wall/{allPaths=**} {

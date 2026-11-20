@@ -298,7 +298,7 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
-    // 科學科準則牆：已驗證嘅 @tswgps.edu.hk 老師，以及已驗證管理員 thomasthlch@gmail.com。
+    // 科學科準則牆：只限 src/allowlist.js 列出、而且 email_verified 的帳戶。
     // 只涵蓋 sci_criteria_wall 呢棵樹，唔影響上面其他集合。
     // 刪除題目文件只限管理員，或建立該題的老師（createdBy.uid）。
     function sciCriteriaWallAdmin() {
@@ -312,10 +312,22 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.token.email_verified == true
         && request.auth.token.email != null
-        && (
-          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
-          || request.auth.token.email.lower() == 'thomasthlch@gmail.com'
-        );
+        && request.auth.token.email.lower() in [
+          'thomasthlch@gmail.com',
+          'laipuiyee@tswgps.edu.hk',
+          'wongwingyan@tswgps.edu.hk',
+          'chanpuishan@tswgps.edu.hk',
+          'wongpikkei@tswgps.edu.hk',
+          'aukamling@tswgps.edu.hk',
+          'leekaying@tswgps.edu.hk',
+          'chankailok@tswgps.edu.hk',
+          'chauhangfung@tswgps.edu.hk',
+          'chanshuion@tswgps.edu.hk',
+          'liyuenman@tswgps.edu.hk',
+          'lichihong@tswgps.edu.hk',
+          'cheunghin@tswgps.edu.hk',
+          'tsehiuhung@tswgps.edu.hk'
+        ];
     }
 
     // path=** 係 Path，冇 matches()。用咗會令刪除規則評估失敗，連帶清走示範題時拋錯。

@@ -10,7 +10,6 @@ import {
   findSimilarCase,
   isAllowedAccount,
   isEmptySeedQuestion,
-  isSchoolEmail,
   isSeedCase,
   isSeedCriterion,
   openWallAfterCleanup,
@@ -22,6 +21,7 @@ import {
   SIMILAR_CRITERIA_LIMIT,
   tallyVotes,
   voteStatus,
+  WALL_TEACHER_EMAILS,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
 import { deductionChoicesHtml, renderLadderHtml, renderPendingHtml } from "../src/render.js";
@@ -38,34 +38,42 @@ function teacher(name, email) {
 }
 
 const agreed = tallyVotes({
-  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
-  bbb: { deduction: 1, displayName: "陳老師", email: "chan@tswgps.edu.hk" },
+  aaa: teacher("李智康", "lichihong@tswgps.edu.hk"),
+  bbb: { deduction: 1, displayName: "張軒", email: "cheunghin@tswgps.edu.hk" },
 });
-if (agreed.decidedDeduction !== 1) fail("兩位老師同扣 1 分應定案");
-if (agreed.counted.length !== 2) fail("應計算兩張學校帳戶的票");
+if (agreed.decidedDeduction !== 1) fail("兩位科任同扣 1 分應定案");
+if (agreed.counted.length !== 2) fail("應計算兩張授權帳戶的票");
 
 const split = tallyVotes({
-  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
-  bbb: { deduction: 2, displayName: "陳老師", email: "chan@tswgps.edu.hk" },
+  aaa: teacher("李智康", "lichihong@tswgps.edu.hk"),
+  bbb: { deduction: 2, displayName: "張軒", email: "cheunghin@tswgps.edu.hk" },
 });
 if (split.decidedDeduction !== null) fail("兩張不同扣分的票不應定案");
 
 const outsider = tallyVotes({
-  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  aaa: teacher("李智康", "lichihong@tswgps.edu.hk"),
   bbb: { deduction: 1, displayName: "外人", email: "person@gmail.com" },
 });
 if (outsider.decidedDeduction !== null || outsider.counted.length !== 1) {
-  fail("非學校電郵不應計票");
+  fail("無關 Gmail 不應計票");
+}
+
+const studentVote = tallyVotes({
+  aaa: teacher("李智康", "lichihong@tswgps.edu.hk"),
+  bbb: { deduction: 1, displayName: "學生", email: "student@tswgps.edu.hk" },
+});
+if (studentVote.decidedDeduction !== null || studentVote.counted.length !== 1) {
+  fail("未列入名單的學校電郵不應計票");
 }
 
 const seeded = tallyVotes({
   seed: { deduction: 0, displayName: "示範", email: "seed@tswgps.edu.hk" },
-  aaa: { deduction: 0, displayName: "黃老師", email: "wong@tswgps.edu.hk" },
+  aaa: { deduction: 0, displayName: "李智康", email: "lichihong@tswgps.edu.hk" },
 });
 if (seeded.decidedDeduction !== null) fail("示範票不應令一位真老師就定案");
 
 const adminLock = tallyVotes({
-  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  aaa: teacher("李智康", "lichihong@tswgps.edu.hk"),
   admin: { deduction: 1, displayName: "管理員", email: "ThomasTHLCH@gmail.com" },
 });
 if (adminLock.decidedDeduction !== 1 || adminLock.counted.length !== 2) {
@@ -76,15 +84,15 @@ if (voteStatus({}).label.includes("2/3")) fail("投票進度不應寫 2/3");
 if (!voteStatus({}).label.includes("2 票同意同一扣分就定案")) fail("應寫明 2 票同意就定案");
 if (consensusBannerText(1, 2).includes("2/3")) fail("定案橫額不應寫 2/3");
 
-if (!isSchoolEmail("wong@tswgps.edu.hk", true)) fail("學校電郵應通過");
-if (isSchoolEmail("wong@tswgps.edu.hk", false)) fail("未驗證電郵應拒絕");
-if (isSchoolEmail("wong@gmail.com", true)) fail("其他網域應拒絕");
-if (isSchoolEmail("wong@tswgps.edu.hk.bad.com", true)) fail("假網域應拒絕");
-if (isSchoolEmail("@tswgps.edu.hk", true)) fail("空白帳號應拒絕");
+if (WALL_TEACHER_EMAILS.length !== 13) fail(`科任名單應有 13 人，實際 ${WALL_TEACHER_EMAILS.length}`);
+if (!isAllowedAccount("lichihong@tswgps.edu.hk", true)) fail("名單上的科任應可登入");
+if (!isAllowedAccount("LiChiHong@TSWGPS.EDU.HK", true)) fail("科任電郵大小寫應可通過");
+if (isAllowedAccount("lichihong@tswgps.edu.hk", false)) fail("未驗證的科任應拒絕");
+if (isAllowedAccount("student@tswgps.edu.hk", true)) fail("未列入名單的學校電郵應拒絕");
+if (isAllowedAccount("wong@tswgps.edu.hk.bad.com", true)) fail("假網域應拒絕");
 if (!isAllowedAccount(ADMIN_EMAIL, true)) fail("管理員 Gmail 應可登入");
 if (isAllowedAccount(ADMIN_EMAIL, false)) fail("未驗證的管理員應拒絕");
 if (isAllowedAccount("person@gmail.com", true)) fail("其他 Gmail 應拒絕");
-if (!isAllowedAccount("Wong@TSWGPS.EDU.HK", true)) fail("學校電郵大小寫應可通過");
 
 const author = { uid: "teacher-1", email: "a@tswgps.edu.hk" };
 const other = { uid: "teacher-2", email: "b@tswgps.edu.hk" };
@@ -260,10 +268,28 @@ if (!mainSource.includes("openWallAfterCleanup")) fail("讀取準則牆不應被
 if (fullRules.includes("path.matches") || rules.includes("path.matches")) {
   fail("唔好對 Path 呼叫 matches，否則刪除會全部被拒");
 }
+const teacherRule = fullRules.slice(
+  fullRules.indexOf("function sciCriteriaWallTeacher()"),
+  fullRules.indexOf("match /sci_criteria_wall/{path=**}"),
+);
+const storageTeacher = storageRules.slice(
+  storageRules.indexOf("function sciCriteriaWallTeacher()"),
+  storageRules.indexOf("match /sci_criteria_wall/{allPaths=**}"),
+);
+if (teacherRule.includes(".matches(") || storageTeacher.includes(".matches(")) {
+  fail("準則牆不應再放行所有學校電郵");
+}
+for (const email of [...WALL_TEACHER_EMAILS, ADMIN_EMAIL]) {
+  if (!teacherRule.includes(`'${email}'`)) fail(`完整規則缺少 ${email}`);
+  if (!storageTeacher.includes(`'${email}'`)) fail(`Storage 片段缺少 ${email}`);
+}
+if (teacherRule.includes("student@tswgps.edu.hk")) fail("學生電郵不應在準則牆規則");
 const denied = explainDataError({ code: "permission-denied" });
 if (denied.includes("片段") || denied.includes("firebase/")) fail("權限錯誤不應再叫人合併規則片段");
 if (!denied.includes("讀寫被拒絕")) fail("應清楚講讀寫被拒絕");
-if (!denied.includes("管理員")) fail("應提及管理員帳戶");
+if (denied.includes("管理員") || denied.includes("@tswgps.edu.hk 學校帳戶")) {
+  fail("登入錯誤不應暗示所有學校電郵或寫出管理員例外");
+}
 if (!denied.includes("重新整理")) fail("應提示剛發佈規則後重新整理再登入");
 let synced = false;
 let warned = false;
