@@ -196,7 +196,7 @@ export function renderLadderHtml(state) {
     const mark = deduction === 0 ? "🟢" : deduction >= maxScore ? "🔴" : "🟡";
     const cards = rules.length
       ? rules.map((rule) => `
-          <article class="animate-card ${info.cardBorder} border rounded-xl p-2.5 space-y-1">
+          <article id="criterion-${escapeHtml(rule.id)}" tabindex="-1" class="animate-card ${info.cardBorder} border rounded-xl p-2.5 space-y-1 scroll-mt-24 outline-none">
             <div class="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">${escapeHtml(rule.text)}</div>
             ${rule.reason ? `<div class="text-xs sm:text-sm text-slate-600 leading-snug">💡 ${escapeHtml(rule.reason)}</div>` : ""}
             ${rule.note ? `<div class="text-xs text-slate-500">🏷️ ${escapeHtml(rule.note)}</div>` : ""}

@@ -153,6 +153,69 @@ export function extractAutoKeywords(text) {
   return KEYWORD_DICTIONARY.filter((word) => value.includes(word));
 }
 
+export const SIMILAR_CRITERIA_THRESHOLD = 0.42;
+export const SIMILAR_CRITERIA_LIMIT = 3;
+
+export function normalizeCriterionText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+function textBigrams(value) {
+  if (value.length < 2) return value ? [value] : [];
+  const grams = [];
+  for (let index = 0; index < value.length - 1; index += 1) grams.push(value.slice(index, index + 2));
+  return grams;
+}
+
+function bigramSimilarity(left, right) {
+  const a = textBigrams(left);
+  const b = textBigrams(right);
+  if (!a.length || !b.length) return 0;
+  const counts = new Map();
+  a.forEach((gram) => counts.set(gram, (counts.get(gram) || 0) + 1));
+  let overlap = 0;
+  b.forEach((gram) => {
+    const count = counts.get(gram) || 0;
+    if (count > 0) {
+      overlap += 1;
+      counts.set(gram, count - 1);
+    }
+  });
+  let score = (2 * overlap) / (a.length + b.length);
+  const shorter = a.length <= b.length ? a : b;
+  const longer = a.length <= b.length ? b : a;
+  if (shorter.length >= 4) {
+    const pool = new Map();
+    longer.forEach((gram) => pool.set(gram, (pool.get(gram) || 0) + 1));
+    let covered = 0;
+    shorter.forEach((gram) => {
+      const count = pool.get(gram) || 0;
+      if (count > 0) {
+        covered += 1;
+        pool.set(gram, count - 1);
+      }
+    });
+    const cover = covered / shorter.length;
+    if (cover >= 0.72) score = Math.max(score, cover);
+  }
+  return score;
+}
+
+export function similarCriteria(text, criteria, { threshold = SIMILAR_CRITERIA_THRESHOLD, limit = SIMILAR_CRITERIA_LIMIT } = {}) {
+  const normalized = normalizeCriterionText(text);
+  if (normalized.length < 4) return [];
+  return (criteria || [])
+    .map((item) => ({
+      item,
+      score: bigramSimilarity(normalized, normalizeCriterionText(item?.text)),
+    }))
+    .filter((row) => row.score >= threshold && row.item?.id)
+    .sort((left, right) => right.score - left.score || String(left.item.id).localeCompare(String(right.item.id)))
+    .slice(0, limit);
+}
+
 export function findSimilarCase(text, hints, cases) {
   const value = String(text || "").trim();
   if (!value) return null;

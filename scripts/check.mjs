@@ -18,6 +18,8 @@ import {
   readFolded,
   showPartPicker,
   showPendingPanel,
+  similarCriteria,
+  SIMILAR_CRITERIA_LIMIT,
   tallyVotes,
   voteStatus,
 } from "../src/logic.js";
@@ -272,6 +274,17 @@ if (partChipLabel({ name: "第 1 部分", maxScore: 2 }, 0) !== "第 1 部分 ·
 }
 if (partChipLabel({ name: "相同點", maxScore: 2 }, 0) !== "第 1 部分：相同點 · 2分") {
   fail("有獨立名稱的分部應保留名稱");
+}
+const near = similarCriteria("北極熊是白色的像冰雪。", [
+  { id: "far", text: "光合作用會產生氧氣。" },
+  { id: "near", text: "北極熊是白色像冰雪" },
+  { id: "mid", text: "北極熊需要保護色" },
+]);
+if (near[0]?.item.id !== "near") fail("最相近的標準應排第一");
+if (near.some((row) => row.item.id === "far")) fail("無關標準不應出現");
+if (near.length > SIMILAR_CRITERIA_LIMIT) fail("相近標準最多三條");
+if (similarCriteria("白", [{ id: "near", text: "北極熊是白色像冰雪" }]).length) {
+  fail("太短的輸入不應提示");
 }
 if (fs.existsSync(path.join(root, "src/seed-data.js"))) fail("不應再附帶示範題資料");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
