@@ -12,6 +12,7 @@ import {
   findSimilarCase,
   getDeductionBadgeInfo,
   safeHttpsUrl,
+  similarCriteria,
 } from "./logic.js";
 import {
   deductionChoicesHtml,
@@ -127,6 +128,7 @@ export function openUpload() {
     document.getElementById("track-a-reason-input").value = "";
     document.getElementById("vote-question-input").value = "";
     document.getElementById("duplicate-alert-box").classList.add("hidden");
+    clearSimilarBox("upload-similar");
   }
   modal.classList.remove("hidden");
   renderUploadChoices();
@@ -191,6 +193,59 @@ function checkDuplicate() {
   box.classList.remove("hidden");
 }
 
+let similarTimer = 0;
+
+function clearSimilarBox(id) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.classList.add("hidden");
+  box.innerHTML = "";
+}
+
+function paintSimilarCriteria(boxId, text) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const matches = similarCriteria(text, state.criteria);
+  if (!matches.length) {
+    clearSimilarBox(boxId);
+    return;
+  }
+  const part = activePart();
+  const maxScore = Number(part?.maxScore) || 0;
+  box.classList.remove("hidden");
+  box.innerHTML = `
+    <div class="text-sm font-black text-amber-950">已有相近標準（仍可新增）</div>
+    ${matches.map(({ item }) => {
+      const info = getDeductionBadgeInfo(Number(item.deduction) || 0, maxScore);
+      return `<button type="button" data-action="focus-criterion" data-id="${escapeHtml(item.id)}" class="w-full text-left bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-2 cursor-pointer">
+        <div class="text-sm font-bold text-slate-900 leading-snug">${escapeHtml(item.text || "")}</div>
+        <div class="text-xs font-bold text-amber-900 mt-0.5">${info.shortLabel} · 去睇呢條</div>
+      </button>`;
+    }).join("")}
+  `;
+}
+
+function scheduleSimilarCriteria(boxId, text) {
+  window.clearTimeout(similarTimer);
+  similarTimer = window.setTimeout(() => paintSimilarCriteria(boxId, text), 250);
+}
+
+function focusCriterion(id) {
+  closeDirect();
+  closeUpload();
+  window.setTimeout(() => {
+    const card = document.getElementById(`criterion-${id}`);
+    if (!card) {
+      showToast("搵唔到呢條標準。", "warning");
+      return;
+    }
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("ring-4", "ring-blue-400");
+    card.focus({ preventScroll: true });
+    window.setTimeout(() => card.classList.remove("ring-4", "ring-blue-400"), 1800);
+  }, 0);
+}
+
 function openDirect(deduction) {
   const part = activePart();
   if (!part) {
@@ -200,6 +255,7 @@ function openDirect(deduction) {
   ui.directDeduction = clampDeduction(deduction ?? 0, part.maxScore);
   document.getElementById("direct-text-content").value = "";
   document.getElementById("direct-text-reason").value = "";
+  clearSimilarBox("direct-similar");
   document.getElementById("direct-text-modal").classList.remove("hidden");
   renderDirectChoices();
 }
@@ -367,7 +423,11 @@ export function onInput(element) {
     const index = Number(element.dataset.index);
     if (ui.qParts[index]) ui.qParts[index].name = element.value;
   }
-  if (element.dataset.input === "answer-text") checkDuplicate();
+  if (element.dataset.input === "answer-text") {
+    checkDuplicate();
+    scheduleSimilarCriteria("upload-similar", element.value);
+  }
+  if (element.dataset.input === "criterion-text") scheduleSimilarCriteria("direct-similar", element.value);
 }
 
 export function onChange(element) {
@@ -387,6 +447,7 @@ export function onClick(element, event) {
     state.banner = "";
     refreshBoard();
   }
+  if (action === "focus-criterion") focusCriterion(element.dataset.id);
   if (action === "toggle-fold") {
     state.folded = !state.folded;
     localStorage.setItem(FOLD_STORAGE_KEY, state.folded ? "1" : "0");
