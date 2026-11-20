@@ -318,11 +318,14 @@ service cloud.firestore {
         );
     }
 
+    // path=** 係 Path，冇 matches()。用咗會令刪除規則評估失敗，連帶清走示範題時拋錯。
     match /sci_criteria_wall/{path=**} {
       allow read: if sciCriteriaWallTeacher();
       allow create, update: if sciCriteriaWallTeacher();
-      allow delete: if sciCriteriaWallTeacher()
-        && !path.matches('wall/questions/[^/]+');
+    }
+
+    match /sci_criteria_wall/wall {
+      allow delete: if sciCriteriaWallTeacher();
     }
 
     match /sci_criteria_wall/wall/questions/{questionId} {
@@ -333,6 +336,14 @@ service cloud.firestore {
           && resource.data.createdBy is map
           && resource.data.createdBy.uid == request.auth.uid
         );
+
+      match /parts/{partId} {
+        allow delete: if sciCriteriaWallTeacher();
+
+        match /{childCollection}/{childId} {
+          allow delete: if sciCriteriaWallTeacher();
+        }
+      }
     }
 
   }

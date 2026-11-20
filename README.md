@@ -39,7 +39,7 @@ npm run preview
 
 **`firebase/firestore.rules` 是要發佈到 Firebase 專案 `mrli-thlch` 的完整規則。`firebase deploy --only firestore:rules` 會取代整個專案的 Firestore 規則。這次可以這樣做，只因為這份檔案已經包含 dashboard、inventory、science_hub、deadline_fighter、p6science，以及準則牆。本 PR 不會部署 Firebase，倉庫裡也沒有 `firebase.json`。**
 
-準則牆允許已驗證的 `@tswgps.edu.hk` 帳戶，以及已驗證的管理員 `thomasthlch@gmail.com`。刪除題目文件只限該管理員，或 `createdBy.uid` 是當前登入者的老師。其他老師仍可刪個別標準或待投票個案。
+準則牆允許已驗證的 `@tswgps.edu.hk` 帳戶，以及已驗證的管理員 `thomasthlch@gmail.com`。刪除題目文件只限該管理員，或 `createdBy.uid` 是當前登入者的老師。其他老師仍可刪個別標準或待投票個案。清走舊示範題如果失敗，不會阻止讀取準則牆。
 
 `firebase/firestore.sci_criteria_wall.rules.fragment` 只留下準則牆那一段，方便對照。它不是完整規則檔，不要單獨發佈。
 

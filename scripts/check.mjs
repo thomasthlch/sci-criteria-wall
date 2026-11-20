@@ -6,12 +6,14 @@ import {
   SEED_QUESTION_TITLES,
   canDeleteQuestion,
   consensusBannerText,
+  explainDataError,
   findSimilarCase,
   isAllowedAccount,
   isEmptySeedQuestion,
   isSchoolEmail,
   isSeedCase,
   isSeedCriterion,
+  openWallAfterCleanup,
   tallyVotes,
   voteStatus,
 } from "../src/logic.js";
@@ -231,6 +233,31 @@ for (const marker of [
 const mainSource = fs.readFileSync(path.join(root, "src/main.js"), "utf8");
 if (mainSource.includes("hd:")) fail("Google 登入不應再用 hd 限制網域");
 if (mainSource.includes("ensureSeed")) fail("不應再寫入示範題");
+if (!mainSource.includes("openWallAfterCleanup")) fail("讀取準則牆不應被清走示範題擋住");
+if (fullRules.includes("path.matches") || rules.includes("path.matches")) {
+  fail("唔好對 Path 呼叫 matches，否則刪除會全部被拒");
+}
+const denied = explainDataError({ code: "permission-denied" });
+if (denied.includes("片段") || denied.includes("firebase/")) fail("權限錯誤不應再叫人合併規則片段");
+if (!denied.includes("讀寫被拒絕")) fail("應清楚講讀寫被拒絕");
+if (!denied.includes("管理員")) fail("應提及管理員帳戶");
+if (!denied.includes("重新整理")) fail("應提示剛發佈規則後重新整理再登入");
+let synced = false;
+let warned = false;
+await openWallAfterCleanup(
+  async () => {
+    const error = new Error("denied");
+    error.code = "permission-denied";
+    throw error;
+  },
+  async () => {
+    synced = true;
+  },
+  () => {
+    warned = true;
+  },
+);
+if (!synced || !warned) fail("清走示範題失敗時仍要開始同步");
 if (fs.existsSync(path.join(root, "src/seed-data.js"))) fail("不應再附帶示範題資料");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
 if (!workflow.includes("upload-pages-artifact") || !workflow.includes("deploy-pages")) {
