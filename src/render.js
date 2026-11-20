@@ -185,17 +185,27 @@ export function renderLadderHtml(state) {
   if (!part) return { heading: "", html: "" };
   const maxScore = Number(part.maxScore) || 0;
   if (!state.childrenReady) {
-    return { heading: "", gridClass: ladderGridClass(maxScore), html: `<div class="text-sm text-slate-500 font-bold">正在載入扣分欄…</div>` };
+    return { heading: "", gridClass: ladderGridClass(1), html: `<div class="text-sm text-slate-500 font-bold">正在載入扣分欄…</div>` };
   }
   const criteria = [...state.criteria].sort(byNewest);
-  let html = "";
+  const occupied = [];
   for (let deduction = 0; deduction <= maxScore; deduction += 1) {
+    const rules = criteria.filter((item) => Number(item.deduction) === deduction);
+    if (rules.length) occupied.push({ deduction, rules });
+  }
+  if (!occupied.length) {
+    return {
+      heading: "",
+      gridClass: ladderGridClass(1),
+      html: `<div class="text-sm font-bold text-slate-500">未有標準。可用上方「直接新增標準」或「上載答案」加入，並揀扣幾分。</div>`,
+    };
+  }
+  let html = "";
+  for (const { deduction, rules } of occupied) {
     const info = getDeductionBadgeInfo(deduction, maxScore);
     const actual = Math.max(0, maxScore - deduction);
-    const rules = criteria.filter((item) => Number(item.deduction) === deduction);
     const mark = deduction === 0 ? "🟢" : deduction >= maxScore ? "🔴" : "🟡";
-    const cards = rules.length
-      ? rules.map((rule) => `
+    const cards = rules.map((rule) => `
           <article id="criterion-${escapeHtml(rule.id)}" tabindex="-1" class="animate-card ${info.cardBorder} border rounded-xl p-2.5 space-y-1 scroll-mt-24 outline-none">
             <div class="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">${escapeHtml(rule.text)}</div>
             ${rule.reason ? `<div class="text-xs sm:text-sm text-slate-600 leading-snug">💡 ${escapeHtml(rule.reason)}</div>` : ""}
@@ -210,12 +220,7 @@ export function renderLadderHtml(state) {
             ${photoHtml(rule.photo, "rule", rule.id)}
             ${changelogHtml(rule.changelog)}
           </article>
-        `).join("")
-      : `
-        <div class="border border-dashed border-slate-200 rounded-xl px-3 py-4 text-center">
-          <div class="text-sm text-slate-400">未有${info.shortLabel}</div>
-        </div>
-      `;
+        `).join("");
     html += `
       <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
         <div class="${info.headerBg} border-b px-3 py-2 flex items-center justify-between gap-2">
@@ -229,7 +234,7 @@ export function renderLadderHtml(state) {
       </div>
     `;
   }
-  return { heading: "", gridClass: ladderGridClass(maxScore), html };
+  return { heading: "", gridClass: ladderGridClass(occupied.length), html };
 }
 
 export function deductionChoicesHtml(maxScore, selected, action) {

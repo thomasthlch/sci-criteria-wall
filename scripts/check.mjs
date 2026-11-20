@@ -24,7 +24,7 @@ import {
   voteStatus,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
-import { renderLadderHtml, renderPendingHtml } from "../src/render.js";
+import { deductionChoicesHtml, renderLadderHtml, renderPendingHtml } from "../src/render.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -163,7 +163,24 @@ if (pendingHtml.includes("<b>")) fail("待投票文字未被跳脫");
 if (!pendingHtml.includes("&lt;b&gt;")) fail("應跳脫答案裡的標籤");
 const ladder = renderLadderHtml(state);
 const directAdds = ladder.html.match(/open-direct/g) || [];
-if (directAdds.length !== 3) fail(`2 分部分應有 3 個扣分欄，實際 ${directAdds.length}`);
+if (directAdds.length !== 1) fail(`只有 -1 有標準時應只顯示 1 欄，實際 ${directAdds.length}`);
+if (ladder.html.includes("未有-0") || ladder.html.includes("未有-2")) fail("空扣分欄不應渲染");
+const sparse = renderLadderHtml({
+  ...state,
+  parts: [{ id: "sp1", name: "相同點", maxScore: 4, order: 0 }],
+  criteria: [
+    { ...state.criteria[0], id: "r0", deduction: 0 },
+    { ...state.criteria[0], id: "r2", deduction: 2, changelog: [] },
+    { ...state.criteria[0], id: "r4", deduction: 4, changelog: [] },
+  ],
+});
+if ((sparse.html.match(/open-direct/g) || []).length !== 3) fail("0/-2/-4 應並排成 3 欄");
+if (!sparse.gridClass.includes("xl:grid-cols-3")) fail("三個有內容的欄應同一行");
+if (sparse.html.includes("未有")) fail("缺了的 -1/-3 不應留空欄");
+const picker = deductionChoicesHtml(4, 0, "select-direct-deduction");
+for (const label of ["-0 分", "-1 分", "-2 分", "-3 分", "-4 分"]) {
+  if (!picker.includes(label)) fail(`新增標準仍應可選 ${label}`);
+}
 if (!ladder.html.includes("黃老師 直接新增") || !ladder.html.includes("修改紀錄")) {
   fail("階梯應顯示作者與修改紀錄");
 }

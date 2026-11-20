@@ -299,10 +299,13 @@ export function showPendingPanel({ folded, pendingCount }) {
   return !folded;
 }
 
-export function ladderGridClass(maxScore) {
-  if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start";
-  if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-3 items-start";
-  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start";
+export function ladderGridClass(visibleCount) {
+  const count = Number(visibleCount) || 0;
+  if (count <= 1) return "grid grid-cols-1 gap-3 items-start";
+  if (count === 2) return "grid grid-cols-1 md:grid-cols-2 gap-3 items-start";
+  if (count === 3) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start";
+  if (count === 4) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start";
+  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-start";
 }
 
 export function pushChange(log, entry, cap = 6) {
