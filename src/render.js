@@ -445,16 +445,16 @@ export function fillBoard(state) {
     stack.innerHTML = showEmpty ? "" : renderPartsStack(state);
   }
 
-  const ladder = renderLadderHtml(state);
   const ladderHeading = document.getElementById("ladder-section-heading");
   const ladderBox = document.getElementById("deduction-columns-container");
   if (ladderHeading) {
-    ladderHeading.textContent = ladder.heading || "";
-    ladderHeading.classList.toggle("hidden", !ladder.heading);
+    ladderHeading.textContent = "";
+    ladderHeading.classList.add("hidden");
   }
   if (ladderBox) {
-    ladderBox.className = ladder.gridClass || "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start";
-    ladderBox.innerHTML = ladder.html || "";
+    ladderBox.hidden = true;
+    ladderBox.className = "hidden";
+    ladderBox.innerHTML = "";
   }
 
   const banner = document.getElementById("consensus-banner");
