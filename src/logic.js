@@ -214,9 +214,9 @@ export function getDeductionBadgeInfo(deduction, maxScore) {
 }
 
 export function ladderGridClass(maxScore) {
-  if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-4 items-start";
-  if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-4 items-start";
-  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start";
+  if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start";
+  if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-3 items-start";
+  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start";
 }
 
 export function pushChange(log, entry, cap = 6) {
