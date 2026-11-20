@@ -213,6 +213,19 @@ export function similarCriteria(text, criteria, { threshold = SIMILAR_CRITERIA_T
     .slice(0, limit);
 }
 
+function fieldMatchScore(normalizedQuery, rawField) {
+  const field = normalizeCriterionText(rawField);
+  if (!field) return 0;
+  const dice = bigramSimilarity(normalizedQuery, field);
+  if (normalizedQuery.length < 2) return dice;
+  const queryInField = field.includes(normalizedQuery);
+  const fieldInQuery = field.length >= 2 && normalizedQuery.includes(field);
+  if (!queryInField && !fieldInQuery) return dice;
+  const shorter = Math.min(normalizedQuery.length, field.length);
+  const longer = Math.max(normalizedQuery.length, field.length);
+  return Math.max(dice, longer ? Math.max(0.5, shorter / longer) : 0);
+}
+
 function criterionFieldScore(normalized, item) {
   const fields = [
     ["text", item?.text],
@@ -221,7 +234,7 @@ function criterionFieldScore(normalized, item) {
   ];
   let best = { key: "text", value: "", score: 0 };
   for (const [key, value] of fields) {
-    const score = bigramSimilarity(normalized, normalizeCriterionText(value));
+    const score = fieldMatchScore(normalized, value);
     if (score > best.score) best = { key, value: String(value || ""), score };
   }
   return best;
@@ -250,7 +263,7 @@ export function questionCriterionEntries(state) {
 
 export function markingMatches(text, entries, { threshold = SIMILAR_CRITERIA_THRESHOLD, limit = SIMILAR_CRITERIA_LIMIT } = {}) {
   const normalized = normalizeCriterionText(text);
-  if (normalized.length < 4) return [];
+  if (normalized.length < 2) return [];
   return (entries || [])
     .map((entry) => {
       const item = entry?.item || entry;

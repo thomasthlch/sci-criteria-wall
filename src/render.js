@@ -304,6 +304,15 @@ export function markingResultsHtml(matches, { partCount = 1 } = {}) {
   return `<div class="text-sm font-black text-slate-700">相近標準（只供對照，不會改分數）</div>${rows}`;
 }
 
+export function markingPanelHtml(text, matches, options = {}) {
+  const normalized = normalizeCriterionText(text);
+  if (!normalized) return "";
+  if (normalized.length < 2) {
+    return `<div class="text-sm font-bold text-slate-500">請再輸入多一個字。一個字未能對照標準，亦不會改分數。</div>`;
+  }
+  return markingResultsHtml(matches, options);
+}
+
 export function paintMarkingResults(state) {
   const box = document.getElementById("marking-results");
   const input = document.getElementById("marking-query");
@@ -315,14 +324,18 @@ export function paintMarkingResults(state) {
     return;
   }
   const text = input.value || "";
-  if (normalizeCriterionText(text).length < 4) {
+  const html = markingPanelHtml(
+    text,
+    markingMatches(text, questionCriterionEntries(state)),
+    { partCount: (state.parts || []).length },
+  );
+  if (!html) {
     box.classList.add("hidden");
     box.innerHTML = "";
     return;
   }
-  const matches = markingMatches(text, questionCriterionEntries(state));
   box.classList.remove("hidden");
-  box.innerHTML = markingResultsHtml(matches, { partCount: (state.parts || []).length });
+  box.innerHTML = html;
 }
 
 export function deductionChoicesHtml(maxScore, selected, action) {

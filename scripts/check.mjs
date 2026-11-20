@@ -28,7 +28,7 @@ import {
   WALL_TEACHER_EMAILS,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
-import { deductionChoicesHtml, fillBoard, markingResultsHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
+import { deductionChoicesHtml, fillBoard, markingPanelHtml, markingResultsHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -432,6 +432,9 @@ if (similarCriteria("白", [{ id: "near", text: "北極熊是白色像冰雪" }]
 if (similarCriteria("只寫三層沒有對應", [{ id: "r", text: "光合作用會產生氧氣", reason: "只寫三層沒有對應" }]).length) {
   fail("新增標準的相近提示仍只看標準正文");
 }
+if (similarCriteria("地殼", [{ id: "a", text: "蛋殼是地殼，蛋白是地幔" }]).length) {
+  fail("新增標準的相近提示仍不接受兩個字");
+}
 const markingEntries = questionCriterionEntries({
   activeSubPartId: "sp1",
   criteria: [{ id: "active", text: "有三層", deduction: 0 }],
@@ -453,6 +456,28 @@ const byReason = markingMatches("學生只寫相同點", markingEntries);
 if (byReason[0]?.item.id !== "b" || byReason[0]?.matchedOn !== "reason") fail("應可對上標準的說明");
 if (markingMatches("蛋", markingEntries).length) fail("太短的答案不應給分建議");
 if (markingMatches("光合作用會產生氧氣和葡萄糖", markingEntries).length) fail("無關答案不應給分建議");
+const keyword = markingMatches("地殼", markingEntries);
+if (keyword[0]?.item.id !== "a") fail("兩個字的關鍵字出現在標準裡時應配對");
+if (keyword.some((row) => row.item.id === "b")) fail("沒有該關鍵字的標準不應出現");
+const keywordHtml = markingResultsHtml(keyword, { partCount: 2 });
+if (!keywordHtml.includes("應俾 1/2") || !keywordHtml.includes("-1 分")) fail("關鍵字配對應顯示扣分和應得分數");
+const contained = markingMatches("我認為蛋殼代表地殼，位置在最外。", [{
+  item: { id: "crust", deduction: 0, text: "地殼" },
+  part: { id: "sp1", name: "相似", maxScore: 2 },
+  partLabel: "第 1 部分：相似",
+}]);
+if (contained[0]?.item.id !== "crust") fail("短標準包含在學生答案裡時應配對");
+const noted = markingMatches("地幔", [{
+  item: { id: "n", deduction: 2, text: "層次不完整", note: "欠地幔" },
+  part: { id: "sp1", maxScore: 4 },
+}]);
+if (noted[0]?.item.id !== "n" || noted[0]?.matchedOn !== "note") fail("關鍵字出現在備註時應配對");
+if (markingPanelHtml("", []) !== "") fail("空白搜尋不應顯示結果");
+const oneCharHtml = markingPanelHtml("蛋", markingMatches("蛋", markingEntries), { partCount: 1 });
+if (!oneCharHtml.includes("一個字") || oneCharHtml.includes("應俾")) fail("一個字應提示再輸入，而不是給分");
+if (!markingPanelHtml("你覺", [], { partCount: 1 }).includes("未有相近標準")) {
+  fail("有輸入但對不上時應顯示說明");
+}
 const crowded = markingMatches("蛋殼是地殼蛋白是地幔", [
   ...markingEntries,
   { item: { id: "c", deduction: 0, text: "蛋殼是地殼蛋白是地幔補充" }, part: markingEntries[0].part, partLabel: markingEntries[0].partLabel },
