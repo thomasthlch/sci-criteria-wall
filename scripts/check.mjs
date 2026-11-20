@@ -26,7 +26,7 @@ import {
   WALL_TEACHER_EMAILS,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
-import { deductionChoicesHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
+import { deductionChoicesHtml, fillBoard, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -228,6 +228,61 @@ const stack = renderPartsStack({
   },
 });
 if (!stack.includes("相同點") || !stack.includes("不相同點")) fail("多於一個分部應上下連續顯示");
+const part1Cards = [{ ...state.criteria[0], id: "layer", deduction: 0, text: "有三層", changelog: [] }];
+const nodes = new Map();
+function boardNode(id) {
+  const node = {
+    hidden: false,
+    className: id === "deduction-columns-container" ? "hidden" : "",
+    textContent: "",
+    innerHTML: "",
+    classList: {
+      toggle(name, on) {
+        const names = new Set(node.className.split(/\s+/).filter(Boolean));
+        if (on) names.add(name);
+        else names.delete(name);
+        node.className = [...names].join(" ");
+      },
+      add(name) { this.toggle(name, true); },
+      remove(name) { this.toggle(name, false); },
+    },
+    setAttribute() {},
+  };
+  nodes.set(id, node);
+  return node;
+}
+for (const id of [
+  "question-tabs-container", "subpart-tabs-container", "banner-q-title", "banner-q-totalscore",
+  "banner-q-subparts-summary", "banner-q-content", "board-status", "sync-label", "empty-wall",
+  "question-banner", "pending-votes-section", "ladder-section", "banner-fold", "fold-toggle",
+  "part-picker", "question-delete-slot", "parts-stack", "ladder-section-heading",
+  "deduction-columns-container", "consensus-banner", "consensus-banner-text",
+]) boardNode(id);
+globalThis.document = { getElementById: (id) => nodes.get(id) || null };
+fillBoard({
+  ...state,
+  folded: true,
+  banner: "",
+  error: "",
+  criteria: part1Cards,
+  cases: [],
+  parts: [
+    { id: "sp1", name: "相似", maxScore: 2, order: 0, pendingCount: 0 },
+    { id: "sp2", name: "不相似", maxScore: 2, order: 1, pendingCount: 0 },
+  ],
+  boards: {
+    sp1: { criteria: part1Cards, cases: [], hints: [], ready: true },
+    sp2: { criteria: [], cases: [], hints: [], ready: true },
+  },
+});
+const painted = `${nodes.get("parts-stack").innerHTML}${nodes.get("deduction-columns-container").innerHTML}`;
+const afterPart2 = painted.split("不相似")[1] || "";
+if ((painted.match(/有三層/g) || []).length !== 1) fail("第 1 部分的標準不應在下面再畫一次");
+if (afterPart2.includes("有三層")) fail("第 2 部分不應顯示第 1 部分的標準");
+if ((afterPart2.match(/未有-0 分/g) || []).length !== 1) fail("第 2 部分的空白預設欄應只出現一次");
+if (!nodes.get("deduction-columns-container").hidden || nodes.get("deduction-columns-container").innerHTML) {
+  fail("舊的單一扣分欄不應再畫在連續分部下面");
+}
 const picker = deductionChoicesHtml(4, 0, "select-direct-deduction");
 for (const label of ["-0 分", "-1 分", "-2 分", "-3 分", "-4 分"]) {
   if (!picker.includes(label)) fail(`新增標準仍應可選 ${label}`);
