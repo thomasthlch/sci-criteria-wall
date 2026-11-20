@@ -409,12 +409,23 @@ function switchQuestion(id) {
   refreshBoard();
 }
 
-function switchPart(id) {
+function activatePart(id) {
   if (!id || id === state.activeSubPartId) return;
   state.activeSubPartId = id;
-  state.banner = "";
+  const board = state.boards?.[id];
+  if (board) {
+    state.criteria = board.criteria || [];
+    state.cases = board.cases || [];
+    state.hints = board.hints || [];
+    state.childrenReady = !!board.ready;
+  }
   persistSelection();
-  sync.watchChildren(state.activeQuestionId, id);
+}
+
+function switchPart(id) {
+  if (!id || id === state.activeSubPartId) return;
+  state.banner = "";
+  activatePart(id);
   refreshBoard();
 }
 
@@ -440,6 +451,7 @@ export function onChange(element) {
 
 export function onClick(element, event) {
   if (element.dataset.backdrop === "true" && event.target !== element) return;
+  if (element.dataset.partId) activatePart(element.dataset.partId);
   const action = element.dataset.action;
   if (action === "switch-question") switchQuestion(element.dataset.id);
   if (action === "switch-part") switchPart(element.dataset.id);

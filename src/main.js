@@ -34,20 +34,19 @@ const state = {
   banner: "",
   holdSelectionUntil: 0,
   folded: readFolded(localStorage.getItem(FOLD_STORAGE_KEY)),
+  boards: {},
 };
 
 let questionsUnsub = null;
 let partsUnsub = null;
-let childrenUnsub = null;
 let partsFor = "";
-let childrenFor = "";
+const boardUnsubs = new Map();
 let rejectReason = "";
 let authNotice = "";
 let enteredUid = "";
 
 const sync = {
   watchParts,
-  watchChildren,
   start: startSync,
   stop: stopSync,
 };
@@ -97,62 +96,87 @@ function onError(error) {
 function stopSync() {
   questionsUnsub?.();
   partsUnsub?.();
-  childrenUnsub?.();
   questionsUnsub = null;
   partsUnsub = null;
-  childrenUnsub = null;
   partsFor = "";
-  childrenFor = "";
+  clearBoards();
 }
 
-function watchChildren(questionId, partId) {
-  if (!questionId || !partId) return;
-  const key = `${questionId}/${partId}`;
-  if (childrenFor === key) return;
-  childrenUnsub?.();
-  childrenFor = key;
-  state.childrenReady = false;
-  state.criteria = [];
-  state.cases = [];
-  state.hints = [];
-  childrenUnsub = listenChildren(questionId, partId, (name, items) => {
-    if (childrenFor !== key) return;
-    if (name === "criteria") state.criteria = items;
-    if (name === "cases") state.cases = items;
-    if (name === "hints") state.hints = items;
-    state.childrenReady = true;
-    state.error = "";
-    fillBoard(state);
-    syncOpenModals();
-  }, onError);
+function clearBoards() {
+  for (const stop of boardUnsubs.values()) stop();
+  boardUnsubs.clear();
+  state.boards = {};
+}
+
+function mirrorActiveBoard() {
+  const board = state.boards?.[state.activeSubPartId];
+  if (!board) {
+    state.criteria = [];
+    state.cases = [];
+    state.hints = [];
+    state.childrenReady = false;
+    return;
+  }
+  state.criteria = board.criteria || [];
+  state.cases = board.cases || [];
+  state.hints = board.hints || [];
+  state.childrenReady = !!board.ready;
+}
+
+function watchAllBoards(questionId, parts) {
+  const ids = new Set(parts.map((part) => part.id));
+  for (const [partId, stop] of boardUnsubs) {
+    if (ids.has(partId)) continue;
+    stop();
+    boardUnsubs.delete(partId);
+    delete state.boards[partId];
+  }
+  for (const part of parts) {
+    if (boardUnsubs.has(part.id)) continue;
+    const partId = part.id;
+    state.boards[partId] = {
+      criteria: [],
+      cases: [],
+      hints: [],
+      seen: { criteria: false, cases: false, hints: false },
+      ready: false,
+    };
+    boardUnsubs.set(partId, listenChildren(questionId, partId, (name, items) => {
+      const board = state.boards[partId];
+      if (!board) return;
+      board[name] = items;
+      board.seen[name] = true;
+      board.ready = board.seen.criteria && board.seen.cases && board.seen.hints;
+      mirrorActiveBoard();
+      state.error = "";
+      fillBoard(state);
+      syncOpenModals();
+    }, onError));
+  }
+  mirrorActiveBoard();
 }
 
 function watchParts(questionId) {
   if (!questionId) return;
   if (partsFor === questionId) return;
   partsUnsub?.();
-  childrenUnsub?.();
   partsFor = questionId;
-  childrenFor = "";
-  state.partsReady = false;
-  state.childrenReady = false;
-  state.parts = [];
-  state.criteria = [];
-  state.cases = [];
-  state.hints = [];
-  partsUnsub = listenParts(questionId, (parts) => {
+    state.partsReady = false;
+    state.childrenReady = false;
+    state.parts = [];
+    state.criteria = [];
+    state.cases = [];
+    state.hints = [];
+    clearBoards();
+    partsUnsub = listenParts(questionId, (parts) => {
     if (partsFor !== questionId) return;
     state.parts = parts;
     state.partsReady = true;
     const held = state.activeSubPartId
       && !parts.some((part) => part.id === state.activeSubPartId)
       && Date.now() < state.holdSelectionUntil;
-    if (!held) {
-      const nextPart = resolvePartId(parts, state.activeSubPartId);
-      const changed = `${questionId}/${nextPart}` !== childrenFor;
-      state.activeSubPartId = nextPart;
-      if (changed) watchChildren(questionId, nextPart);
-    }
+    if (!held) state.activeSubPartId = resolvePartId(parts, state.activeSubPartId);
+    watchAllBoards(questionId, parts);
     state.error = "";
     fillBoard(state);
     syncOpenModals();
@@ -178,9 +202,8 @@ function startSync() {
       if (nextQuestion && changed) watchParts(nextQuestion);
       if (!nextQuestion) {
         partsUnsub?.();
-        childrenUnsub?.();
         partsFor = "";
-        childrenFor = "";
+        clearBoards();
         state.parts = [];
         state.partsReady = false;
       }
