@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-瀏覽器打開 <http://localhost:5173>。已驗證的 `@tswgps.edu.hk` 學校帳戶可以登入。管理員 `thomasthlch@gmail.com` 也可以登入，票數同樣計入定案。其他電郵會被登出，並看到拒絕訊息。
+瀏覽器打開 <http://localhost:5173>。只有 `src/allowlist.js` 列出、而且已驗證的帳戶可以登入。其他 `@tswgps.edu.hk` 帳戶（包括學生）會被登出，也不能讀寫準則牆。
 
 ```bash
 npm test
@@ -39,11 +39,13 @@ npm run preview
 
 **`firebase/firestore.rules` 是要發佈到 Firebase 專案 `mrli-thlch` 的完整規則。`firebase deploy --only firestore:rules` 會取代整個專案的 Firestore 規則。這次可以這樣做，只因為這份檔案已經包含 dashboard、inventory、science_hub、deadline_fighter、p6science，以及準則牆。本 PR 不會部署 Firebase，倉庫裡也沒有 `firebase.json`。**
 
-準則牆允許已驗證的 `@tswgps.edu.hk` 帳戶，以及已驗證的管理員 `thomasthlch@gmail.com`。刪除題目文件只限該管理員，或 `createdBy.uid` 是當前登入者的老師。其他老師仍可刪個別標準或待投票個案。清走舊示範題如果失敗，不會阻止讀取準則牆。
+準則牆的 `sciCriteriaWallTeacher` 只允許 `src/allowlist.js` 的已驗證電郵，不再放行所有 `@tswgps.edu.hk`。刪除題目文件只限既有管理員，或 `createdBy.uid` 是當前登入者的老師。名單上的老師仍可刪個別標準或待投票個案。清走舊示範題如果失敗，不會阻止讀取準則牆。
+
+**資料鎖要在 Firebase Console 發佈完整的 `firebase/firestore.rules` 之後先生效。** `firebase deploy --only firestore:rules` 會取代整個專案規則，所以只應發佈這份完整檔，不要發佈片段。Storage 片段仍要合併進現有 Storage 規則，不要單獨部署。
 
 `firebase/firestore.sci_criteria_wall.rules.fragment` 只留下準則牆那一段，方便對照。它不是完整規則檔，不要單獨發佈。
 
-Storage 仍然只有片段。`firebase/storage.sci_criteria_wall.rules.fragment` 必須合併進現有 Storage 規則，不可以單獨部署。片段同樣允許學校帳戶和管理員 Gmail 讀寫 `sci_criteria_wall/`。若現有 Storage 規則已有同名函式，合併時請改名。
+Storage 仍然只有片段。`firebase/storage.sci_criteria_wall.rules.fragment` 必須合併進現有 Storage 規則，不可以單獨部署。片段使用同一份准許電郵。若現有 Storage 規則已有同名函式，合併時請改名。
 
 客戶端只會讀寫 `sci_criteria_wall` 這個 Firestore 根，以及 Storage 的 `sci_criteria_wall/`。不會接觸 `dashboards`、`eservice`、`scores`、`classes`、`schemas`、`deadline_fighter`。
 

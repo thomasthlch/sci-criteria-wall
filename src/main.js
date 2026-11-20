@@ -212,7 +212,7 @@ async function signIn() {
 async function enterApp(user) {
   const email = user.email || "";
   if (!isAllowedAccount(email, user.emailVerified)) {
-    rejectReason = `只限已驗證嘅 @tswgps.edu.hk 學校帳戶，或已授權的管理員帳戶。${email ? `（${email}）` : ""}系統已幫你登出。`;
+    rejectReason = `只限已獲授權的科學科老師帳戶。${email ? `（${email}）` : ""}系統已幫你登出。`;
     await signOut(auth);
     return;
   }
