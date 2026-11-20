@@ -2,15 +2,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  ADMIN_EMAIL,
+  SEED_QUESTION_TITLES,
+  canDeleteQuestion,
   consensusBannerText,
   findSimilarCase,
+  isAllowedAccount,
+  isEmptySeedQuestion,
   isSchoolEmail,
+  isSeedCase,
+  isSeedCriterion,
   tallyVotes,
   voteStatus,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
 import { renderLadderHtml, renderPendingHtml } from "../src/render.js";
-import { buildSeedContent } from "../src/seed-data.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -50,6 +56,14 @@ const seeded = tallyVotes({
 });
 if (seeded.decidedDeduction !== null) fail("示範票不應令一位真老師就定案");
 
+const adminLock = tallyVotes({
+  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  admin: { deduction: 1, displayName: "管理員", email: "ThomasTHLCH@gmail.com" },
+});
+if (adminLock.decidedDeduction !== 1 || adminLock.counted.length !== 2) {
+  fail("管理員 Gmail 的票應計入定案");
+}
+
 if (voteStatus({}).label.includes("2/3")) fail("投票進度不應寫 2/3");
 if (!voteStatus({}).label.includes("2 票同意同一扣分就定案")) fail("應寫明 2 票同意就定案");
 if (consensusBannerText(1, 2).includes("2/3")) fail("定案橫額不應寫 2/3");
@@ -59,16 +73,41 @@ if (isSchoolEmail("wong@tswgps.edu.hk", false)) fail("未驗證電郵應拒絕")
 if (isSchoolEmail("wong@gmail.com", true)) fail("其他網域應拒絕");
 if (isSchoolEmail("wong@tswgps.edu.hk.bad.com", true)) fail("假網域應拒絕");
 if (isSchoolEmail("@tswgps.edu.hk", true)) fail("空白帳號應拒絕");
+if (!isAllowedAccount(ADMIN_EMAIL, true)) fail("管理員 Gmail 應可登入");
+if (isAllowedAccount(ADMIN_EMAIL, false)) fail("未驗證的管理員應拒絕");
+if (isAllowedAccount("person@gmail.com", true)) fail("其他 Gmail 應拒絕");
+if (!isAllowedAccount("Wong@TSWGPS.EDU.HK", true)) fail("學校電郵大小寫應可通過");
 
-const seed = buildSeedContent();
-if (seed.length !== 3) fail(`示範題應有 3 題，實際 ${seed.length}`);
-if (!seed[0].title.includes("雞蛋模擬地球")) fail("第一題應為雞蛋模擬地球");
-if (seed[0].parts.reduce((sum, part) => sum + part.maxScore, 0) !== 4) fail("雞蛋題應共 4 分");
-const serialized = JSON.stringify(seed);
-if (serialized.includes("data:image") || serialized.includes("downloadURL")) {
-  fail("種子資料不應包含相片");
+const author = { uid: "teacher-1", email: "a@tswgps.edu.hk" };
+const other = { uid: "teacher-2", email: "b@tswgps.edu.hk" };
+const admin = { uid: "admin", email: ADMIN_EMAIL };
+const owned = { id: "q_real", createdBy: { uid: "teacher-1" } };
+if (!canDeleteQuestion(author, owned)) fail("建立者應可刪題");
+if (canDeleteQuestion(other, owned)) fail("其他老師不應可刪題");
+if (!canDeleteQuestion(admin, owned)) fail("管理員應可刪題");
+if (canDeleteQuestion(other, { id: "q_real" })) fail("沒有建立者時不應靠空白資料刪題");
+
+const seedShell = { id: "q1", title: SEED_QUESTION_TITLES.q1, createdBy: { uid: "teacher-1" } };
+if (!isEmptySeedQuestion(seedShell, [{ id: "sp_q1_1" }], 0)) fail("空的示範題殼應可清走");
+if (isEmptySeedQuestion({ ...seedShell, title: "老師改過的題" }, [{ id: "sp_q1_1" }], 0)) {
+  fail("改過標題的題目不應當成示範題");
 }
-const eggHints = seed[0].parts[0].hints;
+if (isEmptySeedQuestion(seedShell, [{ id: "sp_teacher" }], 0)) fail("有老師新增分部時不應刪整題");
+if (isEmptySeedQuestion(seedShell, [{ id: "sp_q1_1" }], 1)) fail("仲有內容時不應刪整題");
+if (!isSeedCriterion({ source: "seed", createdBy: { uid: "teacher-1" } })) fail("source 為 seed 先是示範標準");
+if (isSeedCriterion({ source: "direct", createdBy: { uid: "seed" } })) fail("唔可以用 createdBy 單獨判斷示範標準");
+if (!isSeedCase({ author: { uid: "seed" } })) fail("seed uid 的擬問應可清走");
+if (isSeedCase({ author: { uid: "teacher-1" }, createdBy: { uid: "seed" } })) fail("唔可以用 createdBy 判斷擬問");
+
+const eggHints = [
+  {
+    keywords: ["蛋殼", "蛋白", "蛋黃", "三層"],
+    excludeKeywords: ["地殼", "地幔", "地核"],
+    matchedText: "只寫三層",
+    deduction: 1,
+    reason: "單邊比較",
+  },
+];
 const oneSided = findSimilarCase("雞蛋有蛋殼、蛋白、蛋黃三層", eggHints, []);
 if (!oneSided || oneSided.item.deduction !== 1) fail("單邊三層應提示 -1");
 const contrasted = findSimilarCase("蛋殼對應地殼", eggHints, []);
@@ -171,8 +210,28 @@ const storageRules = fs.readFileSync(path.join(root, "firebase/storage.sci_crite
 if (rules.includes("rules_version") || storageRules.includes("rules_version")) {
   fail("規則片段不應是可單獨部署的完整規則檔");
 }
-if (!rules.includes("match /sci_criteria_wall/{document=**}")) fail("Firestore 片段缺少準則牆 match");
+if (!rules.includes("match /sci_criteria_wall/{path=**}")) fail("Firestore 片段缺少準則牆 match");
+if (!rules.includes(ADMIN_EMAIL) || !storageRules.includes(ADMIN_EMAIL)) fail("規則片段應允許管理員 Gmail");
+if (!rules.includes("createdBy.uid == request.auth.uid")) fail("題目刪除應限建立者");
 if (!storageRules.includes("match /sci_criteria_wall/{allPaths=**}")) fail("Storage 片段缺少準則牆 match");
+const fullRules = fs.readFileSync(path.join(root, "firebase/firestore.rules"), "utf8");
+if (!fullRules.startsWith("rules_version = '2';")) fail("完整規則應以 rules_version 開頭");
+for (const marker of [
+  "match /dashboards/master_dashboard",
+  "match /inventory/items",
+  "match /deadline_fighter/{uid}",
+  "match /science_hub/scoring/scores/{scoreId}",
+  "match /p6science/{userId}",
+  "function sciCriteriaWallAdmin()",
+  "match /sci_criteria_wall/wall/questions/{questionId}",
+  ADMIN_EMAIL,
+]) {
+  if (!fullRules.includes(marker)) fail(`完整 Firestore 規則缺少 ${marker}`);
+}
+const mainSource = fs.readFileSync(path.join(root, "src/main.js"), "utf8");
+if (mainSource.includes("hd:")) fail("Google 登入不應再用 hd 限制網域");
+if (mainSource.includes("ensureSeed")) fail("不應再寫入示範題");
+if (fs.existsSync(path.join(root, "src/seed-data.js"))) fail("不應再附帶示範題資料");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
 if (!workflow.includes("upload-pages-artifact") || !workflow.includes("deploy-pages")) {
   fail("Pages workflow 應使用 upload-pages-artifact 與 deploy-pages");
@@ -185,4 +244,4 @@ if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
-console.log(`準則牆檢查通過：${seed.length} 題示範、2 票定案、規則片段與 Pages workflow。`);
+console.log("準則牆檢查通過：管理員可登入、刪題權限、沒有示範題、完整 Firestore 規則。");

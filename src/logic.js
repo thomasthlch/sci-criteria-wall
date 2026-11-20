@@ -1,4 +1,11 @@
 export const SCHOOL_DOMAIN = "tswgps.edu.hk";
+export const ADMIN_EMAIL = "thomasthlch@gmail.com";
+
+export const SEED_QUESTION_TITLES = {
+  q1: "第 1 題：雞蛋模擬地球",
+  q2: "第 2 題：食鹽溶解速率實驗",
+  q3: "第 3 題：葉片澱粉測試煮軟目的",
+};
 
 const KEYWORD_DICTIONARY = [
   "卵形",
@@ -31,6 +38,42 @@ export function isSchoolEmail(email, verified = true) {
   const normalized = email.trim().toLowerCase();
   const suffix = `@${SCHOOL_DOMAIN}`;
   return normalized.length > suffix.length && normalized.endsWith(suffix);
+}
+
+export function isAllowedAccount(email, verified = true) {
+  if (!verified || typeof email !== "string") return false;
+  const normalized = email.trim().toLowerCase();
+  return normalized === ADMIN_EMAIL || isSchoolEmail(normalized, true);
+}
+
+export function canDeleteQuestion(user, question) {
+  if (!user?.uid || !question) return false;
+  const email = String(user.email || "").trim().toLowerCase();
+  if (email === ADMIN_EMAIL) return true;
+  return question.createdBy?.uid === user.uid;
+}
+
+export function isSeedCriterion(data) {
+  return data?.source === "seed";
+}
+
+export function isSeedCase(data) {
+  return String(data?.author?.uid || "") === "seed";
+}
+
+export function isSeedHintId(id) {
+  return /^h_q[123]_[0-9]+_[0-9]+$/.test(String(id || ""));
+}
+
+export function isSeedPartId(id) {
+  return /^sp_q[123]_[0-9]+$/.test(String(id || ""));
+}
+
+export function isEmptySeedQuestion(question, parts, remainingChildCount) {
+  const expected = SEED_QUESTION_TITLES[question?.id];
+  if (!expected || question?.title !== expected) return false;
+  if (remainingChildCount > 0) return false;
+  return (parts || []).every((part) => isSeedPartId(part.id));
 }
 
 export function profileOf(user) {
@@ -66,7 +109,7 @@ export function tallyVotes(votes) {
   const counted = [];
   for (const [uid, vote] of Object.entries(votes || {})) {
     if (!vote || !Number.isFinite(Number(vote.deduction))) continue;
-    if (!isSchoolEmail(vote.email, true)) continue;
+    if (!isAllowedAccount(vote.email, true)) continue;
     if (!uid || uid.startsWith("seed")) continue;
     const deduction = Number(vote.deduction);
     tally.set(deduction, (tally.get(deduction) || 0) + 1);
@@ -171,9 +214,9 @@ export function getDeductionBadgeInfo(deduction, maxScore) {
 }
 
 export function ladderGridClass(maxScore) {
-  if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start";
-  if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-6 items-start";
-  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 items-start";
+  if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-4 items-start";
+  if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-4 items-start";
+  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start";
 }
 
 export function pushChange(log, entry, cap = 6) {

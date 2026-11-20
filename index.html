@@ -16,10 +16,10 @@
           <div class="w-12 h-12 rounded-2xl bg-blue-700 text-white flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🔬</div>
           <div>
             <h1 class="text-2xl font-black text-slate-900 leading-tight">科學科長題目「扣分階梯」協作對齊板</h1>
-            <p class="text-slate-500 font-bold">準則牆 · 只限 @tswgps.edu.hk</p>
+            <p class="text-slate-500 font-bold">準則牆 · 學校帳戶或已授權管理員</p>
           </div>
         </div>
-        <p class="text-lg text-slate-700 font-medium">用學校 Google 帳戶登入後，各位老師會睇到同一塊準則牆：題目、分部、扣分階梯同待投票個案都會即時同步。</p>
+        <p class="text-lg text-slate-700 font-medium">用已驗證的 @tswgps.edu.hk 學校帳戶，或已授權的管理員帳戶登入。各位老師會睇到同一塊準則牆。</p>
         <p id="gate-message" class="bg-slate-50 border-2 border-slate-200 text-slate-700 font-bold rounded-2xl px-4 py-3">正在確認登入狀態…</p>
         <button id="gate-signin" type="button" data-action="sign-in" disabled class="w-full bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-300 font-black text-lg py-4 rounded-2xl inline-flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60">
           <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
@@ -28,7 +28,7 @@
             <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
             <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
           </svg>
-          用 Google 學校帳戶登入
+          用 Google 帳戶登入
         </button>
       </div>
     </section>
@@ -36,15 +36,15 @@
     <div id="app" class="hidden">
       <header class="bg-white border-b-2 border-slate-200 sticky top-0 z-30">
         <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-blue-700 text-white flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🔬</div>
-            <div>
-              <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">科學科長題目「扣分階梯」協作對齊板</h1>
-              <p class="text-sm sm:text-base text-slate-500 font-bold">準則牆 · 分部分獨立評分 · 扣分標準即時同步 · <span id="sync-label">連線中</span></p>
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-2xl bg-blue-700 text-white flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🔬</div>
+            <div class="min-w-0">
+              <h1 class="text-lg sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">科學科長題目「扣分階梯」協作對齊板</h1>
+              <p class="text-sm text-slate-500 font-bold truncate">準則牆 · 即時同步 · <span id="sync-label">連線中</span></p>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="inline-flex items-center gap-2.5 bg-slate-50 border-2 border-slate-200 px-4 py-2 rounded-full" title="已透過 Google 教育帳號登入">
+          <div class="flex items-center gap-2 shrink-0">
+            <div class="inline-flex items-center gap-2 bg-slate-50 border-2 border-slate-200 px-3 py-1.5 rounded-full max-w-[16rem]" title="已透過 Google 帳戶登入">
               <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
                 <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
@@ -52,8 +52,8 @@
                 <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
               </svg>
               <span class="text-left leading-tight">
-                <span id="user-name" class="block text-base sm:text-lg font-black text-slate-800"></span>
-                <span id="user-email" class="block text-xs sm:text-sm font-bold text-slate-500"></span>
+                <span id="user-name" class="block text-sm sm:text-base font-black text-slate-800 truncate max-w-[9rem] sm:max-w-[14rem]"></span>
+                <span id="user-email" class="block text-xs font-bold text-slate-500 truncate max-w-[9rem] sm:max-w-[14rem]"></span>
               </span>
             </div>
             <button type="button" data-action="sign-out" class="text-sm sm:text-base font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3.5 py-2 rounded-2xl cursor-pointer">登出</button>
@@ -61,60 +61,66 @@
         </div>
       </header>
 
-      <nav class="bg-slate-200/85 border-b-2 border-slate-300" aria-label="題目切換">
-        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div id="question-tabs-container" class="flex flex-wrap items-center gap-2.5"></div>
-          <div class="flex flex-wrap items-center gap-2.5 shrink-0">
-            <button type="button" data-action="open-question" data-mode="edit" class="px-4 py-3 rounded-2xl text-base sm:text-lg font-black bg-white hover:bg-slate-100 text-slate-900 border-2 border-slate-300 cursor-pointer">✏️ 修改題目與分部</button>
-            <button type="button" data-action="open-question" data-mode="create" class="px-5 py-3 rounded-2xl text-base sm:text-lg font-black bg-slate-900 hover:bg-slate-800 text-white cursor-pointer">➕ 新增題目</button>
+      <nav class="bg-slate-200/80 border-b border-slate-300" aria-label="題目切換">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div id="question-tabs-container" class="tab-scroller min-w-0 flex-1"></div>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" data-action="open-question" data-mode="edit" class="px-3 py-2 rounded-xl text-sm sm:text-base font-black bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 cursor-pointer">✏️ 修改題目</button>
+            <button type="button" data-action="open-question" data-mode="create" class="px-3 py-2 rounded-xl text-sm sm:text-base font-black bg-slate-900 hover:bg-slate-800 text-white cursor-pointer">➕ 新增題目</button>
           </div>
         </div>
       </nav>
 
-      <main class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
-        <p id="board-status" class="bg-white border-2 border-slate-200 text-slate-700 rounded-2xl px-4 py-3 font-bold">正在確認登入狀態…</p>
-        <section class="bg-white border-2 border-blue-200 rounded-3xl p-5 sm:p-6 space-y-5">
-          <div class="space-y-2.5">
-            <div class="flex flex-wrap items-center gap-3">
-              <h2 id="banner-q-title" class="text-xl sm:text-2xl font-black text-slate-900"></h2>
-              <span id="banner-q-totalscore" class="inline-flex items-center bg-blue-700 text-white font-black text-base sm:text-lg px-3.5 py-1 rounded-xl"></span>
-              <span id="banner-q-subparts-summary" class="text-sm sm:text-base font-bold text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl"></span>
+      <main class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-5 space-y-4">
+        <p id="board-status" class="bg-white border border-slate-200 text-slate-700 rounded-2xl px-4 py-3 font-bold">正在確認登入狀態…</p>
+        <section id="empty-wall" hidden class="bg-white border-2 border-dashed border-slate-300 rounded-3xl px-5 py-8 sm:py-10 text-center space-y-3">
+          <h2 class="text-xl sm:text-2xl font-black text-slate-900">未有題目</h2>
+          <p class="text-base sm:text-lg text-slate-600 font-medium">新增第一條題目，就可以開始對齊扣分階梯。</p>
+          <button type="button" data-action="open-question" data-mode="create" class="inline-flex bg-slate-900 hover:bg-slate-800 text-white font-black text-base px-5 py-3 rounded-2xl cursor-pointer">➕ 新增題目</button>
+        </section>
+        <section id="question-banner" class="bg-white border border-blue-200 rounded-3xl p-4 sm:p-5 space-y-4">
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 id="banner-q-title" class="text-lg sm:text-2xl font-black text-slate-900 min-w-0"></h2>
+              <span id="banner-q-totalscore" class="inline-flex items-center bg-blue-700 text-white font-black text-sm sm:text-base px-2.5 py-0.5 rounded-lg"></span>
+              <span id="question-delete-slot"></span>
             </div>
-            <p id="banner-q-content" class="text-lg sm:text-[19px] text-slate-800 font-medium leading-relaxed bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3"></p>
+            <p id="banner-q-subparts-summary" class="text-sm font-bold text-blue-900 leading-relaxed"></p>
+            <p id="banner-q-content" class="text-base sm:text-lg text-slate-800 font-medium leading-relaxed bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5"></p>
           </div>
-          <div class="pt-2 border-t-2 border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-            <div class="space-y-1.5">
-              <div class="text-sm font-black text-slate-500">👇 請揀選要批改／對齊嘅評分部分（各部分完全獨立顯示）：</div>
-              <div id="subpart-tabs-container" class="flex flex-wrap items-center gap-3"></div>
+          <div class="pt-3 border-t border-slate-100 flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+            <div class="space-y-1.5 min-w-0">
+              <div class="text-xs sm:text-sm font-black text-slate-500">揀選評分部分（各部分獨立顯示）</div>
+              <div id="subpart-tabs-container" class="flex flex-wrap items-center gap-2"></div>
             </div>
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              <button type="button" data-action="open-direct" data-deduction="0" class="bg-slate-100 hover:bg-slate-200 text-slate-900 border-2 border-slate-300 font-black text-lg px-5 py-4 rounded-2xl cursor-pointer">✍️ 直接文字新增標準</button>
-              <button type="button" data-action="open-upload" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg sm:text-xl px-6 py-4 rounded-2xl border-b-4 border-emerald-800 cursor-pointer">📸 影學生答案／上載 Sample</button>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+              <button type="button" data-action="open-direct" data-deduction="0" class="bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 font-black text-base px-4 py-3 rounded-2xl cursor-pointer">✍️ 直接文字新增標準</button>
+              <button type="button" data-action="open-upload" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base sm:text-lg px-4 py-3 rounded-2xl cursor-pointer">📸 影學生答案／上載</button>
             </div>
           </div>
         </section>
 
-        <div id="consensus-banner" class="hidden bg-emerald-100 border-2 border-emerald-500 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
-          <div class="text-lg sm:text-xl font-black text-emerald-950" id="consensus-banner-text">已有 2 票同意同一個扣分，個案已歸入扣分欄</div>
-          <button type="button" data-action="hide-banner" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base px-4 py-2 rounded-xl cursor-pointer">知道</button>
+        <div id="consensus-banner" class="hidden bg-emerald-50 border border-emerald-400 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div class="text-base sm:text-lg font-black text-emerald-950 min-w-0" id="consensus-banner-text">已有 2 票同意同一個扣分，個案已歸入扣分欄</div>
+          <button type="button" data-action="hide-banner" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-sm px-3 py-1.5 rounded-xl cursor-pointer shrink-0">知道</button>
         </div>
 
-        <section id="pending-votes-section" class="bg-white border-2 border-amber-300 rounded-3xl overflow-hidden">
-          <div class="bg-amber-100/90 border-b-2 border-amber-300 px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-2">
-            <div class="flex flex-wrap items-center gap-2.5">
-              <h3 class="text-lg sm:text-xl font-black text-amber-950">🟡 待投票擬問（唔肯定扣幾分，放上去大家一齊投票）</h3>
-              <span id="pending-subpart-label" class="bg-white/90 border border-amber-300 text-amber-950 font-black text-sm sm:text-base px-3 py-0.5 rounded-xl"></span>
+        <section id="pending-votes-section" class="bg-white border border-amber-300 rounded-3xl overflow-hidden">
+          <div class="bg-amber-50 border-b border-amber-200 px-4 sm:px-5 py-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2 min-w-0">
+              <h3 class="text-base sm:text-lg font-black text-amber-950">🟡 待投票擬問</h3>
+              <span id="pending-subpart-label" class="bg-white border border-amber-200 text-amber-950 font-bold text-sm px-2.5 py-0.5 rounded-lg"></span>
             </div>
-            <span id="pending-count-badge" class="bg-amber-400 text-slate-950 font-black text-base px-3.5 py-1 rounded-full">0 題待投票</span>
+            <span id="pending-count-badge" class="bg-amber-400 text-slate-950 font-black text-sm px-3 py-1 rounded-full">0 題待投票</span>
           </div>
-          <p class="px-5 sm:px-6 pt-4 text-sm sm:text-base font-bold text-amber-950">2 位已登入老師對同一個扣分投同意票，就會定案並放入階梯。唔使等到第 3 票。</p>
-          <div id="pending-votes-container" class="p-4 sm:p-6"></div>
+          <p class="px-4 sm:px-5 pt-3 text-sm font-bold text-amber-950">2 位已登入老師對同一個扣分投同意票，就會定案並放入階梯。</p>
+          <div id="pending-votes-container" class="p-4 sm:p-5"></div>
         </section>
 
-        <section class="space-y-3">
-          <div class="flex flex-wrap items-center justify-between gap-2 px-1">
-            <h3 id="ladder-section-heading" class="text-xl sm:text-2xl font-black text-slate-900">📊 扣分階梯對照板</h3>
-            <span class="text-sm sm:text-base font-bold text-slate-600">撳卡片「修改／調整扣分」可改扣分等級，卡片會移去對應欄。</span>
+        <section id="ladder-section" class="space-y-2">
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 px-0.5">
+            <h3 id="ladder-section-heading" class="text-lg sm:text-2xl font-black text-slate-900">📊 扣分階梯對照板</h3>
+            <span class="text-sm font-bold text-slate-500">「修改／調整扣分」會把卡片移去對應欄。</span>
           </div>
           <div id="deduction-columns-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"></div>
         </section>

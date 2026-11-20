@@ -1,17 +1,40 @@
 // =============================================================================
 // FRAGMENT ONLY — 這不是完整的 firestore.rules。
-// 不可單獨部署。單獨部署會覆蓋 mrli-thlch 現有 dashboard、評分、deadline-fighter 等規則。
-// 請把下面的 function 與 match 合併進「現有」規則檔，放在
-//   service cloud.firestore { match /databases/{database}/documents { ... } }
-// 裡面、與其他 match 並列。Firebase Hosting 部署不在本專案範圍。
+// 要發佈到 mrli-thlch 的完整規則在 firebase/firestore.rules。
+// 這份片段只記錄準則牆那一段，方便對照。不要單獨部署。
+// Firebase Hosting 部署不在本專案範圍。
 // =============================================================================
+
+    function sciCriteriaWallAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() == 'thomasthlch@gmail.com';
+    }
 
     function sciCriteriaWallTeacher() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email.matches('.+@[tT][sS][wW][gG][pP][sS]\\.[eE][dD][uU]\\.[hH][kK]$');
+        && request.auth.token.email != null
+        && (
+          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
+          || request.auth.token.email.lower() == 'thomasthlch@gmail.com'
+        );
     }
 
-    match /sci_criteria_wall/{document=**} {
-      allow read, write: if sciCriteriaWallTeacher();
+    match /sci_criteria_wall/{path=**} {
+      allow read: if sciCriteriaWallTeacher();
+      allow create, update: if sciCriteriaWallTeacher();
+      allow delete: if sciCriteriaWallTeacher()
+        && !path.matches('wall/questions/[^/]+');
+    }
+
+    match /sci_criteria_wall/wall/questions/{questionId} {
+      allow delete: if sciCriteriaWallAdmin()
+        || (
+          sciCriteriaWallTeacher()
+          && resource.data.keys().hasAll(['createdBy'])
+          && resource.data.createdBy is map
+          && resource.data.createdBy.uid == request.auth.uid
+        );
     }
