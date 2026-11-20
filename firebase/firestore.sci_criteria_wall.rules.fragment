@@ -22,11 +22,14 @@
         );
     }
 
+    // path=** 係 Path，冇 matches()。刪除要寫明路徑，唔好對 path 呼叫 matches。
     match /sci_criteria_wall/{path=**} {
       allow read: if sciCriteriaWallTeacher();
       allow create, update: if sciCriteriaWallTeacher();
-      allow delete: if sciCriteriaWallTeacher()
-        && !path.matches('wall/questions/[^/]+');
+    }
+
+    match /sci_criteria_wall/wall {
+      allow delete: if sciCriteriaWallTeacher();
     }
 
     match /sci_criteria_wall/wall/questions/{questionId} {
@@ -37,4 +40,12 @@
           && resource.data.createdBy is map
           && resource.data.createdBy.uid == request.auth.uid
         );
+
+      match /parts/{partId} {
+        allow delete: if sciCriteriaWallTeacher();
+
+        match /{childCollection}/{childId} {
+          allow delete: if sciCriteriaWallTeacher();
+        }
+      }
     }

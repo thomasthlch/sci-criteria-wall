@@ -8,7 +8,7 @@ import {
 } from "firebase/auth";
 import { closeTopModal, initActions, onChange, onClick, onInput, openUpload, syncOpenModals, usePhoto } from "./actions.js";
 import { auth } from "./firebase.js";
-import { explainDataError, friendlyAuthError, isAllowedAccount, profileOf, resolvePartId, resolveQuestionId } from "./logic.js";
+import { explainDataError, friendlyAuthError, isAllowedAccount, openWallAfterCleanup, profileOf, resolvePartId, resolveQuestionId } from "./logic.js";
 import { fillBoard } from "./render.js";
 import { cleanupSeedArtifacts, listenChildren, listenParts, listenQuestions } from "./store.js";
 
@@ -218,12 +218,9 @@ async function enterApp(user) {
   showApp(user);
   if (enteredUid === user.uid && questionsUnsub) return;
   enteredUid = user.uid;
-  try {
-    await cleanupSeedArtifacts();
-    startSync();
-  } catch (error) {
-    onError(error);
-  }
+  await openWallAfterCleanup(cleanupSeedArtifacts, startSync, (error) => {
+    console.warn("清走示範題未完成，仍會讀取準則牆", error);
+  });
 }
 
 onAuthStateChanged(auth, (user) => {

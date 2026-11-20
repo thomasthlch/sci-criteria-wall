@@ -298,8 +298,17 @@ export function friendlyAuthError(code) {
 export function explainDataError(error) {
   const code = error?.code || "";
   if (code === "permission-denied") {
-    return "未能讀寫準則牆。請先把 firebase/ 內的規則片段合併到現有 mrli-thlch 規則（唔好單獨部署成整個規則檔），並用已驗證嘅 @tswgps.edu.hk 帳戶登入。";
+    return "讀寫被拒絕。請用已驗證的 @tswgps.edu.hk 學校帳戶或管理員帳戶。如果你剛剛發佈了規則，請重新整理頁面，再登入一次。";
   }
   if (code === "unavailable") return "暫時連唔上 Firestore，請檢查網絡後再試。";
   return "讀取或儲存資料時發生問題，請稍後再試。";
+}
+
+export async function openWallAfterCleanup(cleanup, sync, warn) {
+  try {
+    await cleanup();
+  } catch (error) {
+    warn(error);
+  }
+  return sync();
 }
