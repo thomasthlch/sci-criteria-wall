@@ -1,0 +1,314 @@
+rules_version = '2';
+// 科學教具室地圖：inventory/items 同相片只限已登入嘅允許帳戶讀、只限已驗證管理員寫。
+// 讀取：電郵以 @tswgps.edu.hk 結尾，或者授權 Gmail thomasthlch@gmail.com。
+// 寫入：thomasthlch@gmail.com、g.sci@tswgps.edu.hk（lichihong@tswgps.edu.hk 只保留學校網域讀取，非管理員）
+//
+// firebase deploy --only firestore:rules 會取代成個 mrli-thlch 專案嘅規則。
+// 下面同時保留而家其他教師工具用緊嘅文件（由線上頁面嘅客戶端推斷），
+// 避免一併部署時鎖死 dashboard／task list／science_hub。部署前請同 Console 現有規則對過；
+// 如果仲有其他集合，要先合併再部署。
+//
+// 2026-11-20 已合併 sci_criteria_wall：已驗證 @tswgps.edu.hk 可讀寫準則牆。
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in [
+          'thomasthlch@gmail.com',
+          'g.sci@tswgps.edu.hk'
+        ];
+    }
+
+    // 睇教具同相片。email_verified 同 isOwner 一樣要檢查，避免未驗證電郵通過網域規則。
+    // 學校網域以外只放授權睇網站嘅 Gmail，唔等於放寬寫入。
+    function canReadInventory() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email != null
+        && (
+          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
+          || request.auth.token.email.lower() in [
+            'thomasthlch@gmail.com'
+          ]
+        );
+    }
+
+    // 每張相一份文件，唔好塞入 inventory/items（1MB 上限）。停留 Spark，唔用 Storage。
+    function validPhoto() {
+      return request.resource.data.keys().hasOnly(['itemId', 'contentType', 'bytes'])
+        && request.resource.data.itemId is string
+        && request.resource.data.itemId.size() < 80
+        && request.resource.data.contentType.matches('image/webp|image/jpeg|image/png')
+        && request.resource.data.bytes is bytes
+        && request.resource.data.bytes.size() > 0
+        && request.resource.data.bytes.size() < 900000;
+    }
+
+    // 教具地圖。一個文件，形狀 { savedAt, items }。items 只存檔名、https 或 fs: 參考。
+    match /inventory/items {
+      allow read: if canReadInventory();
+      allow create, update, delete: if isOwner();
+
+      match /photos/{photoId} {
+        allow read: if canReadInventory();
+        allow create, update: if isOwner() && validPhoto();
+        allow delete: if isOwner();
+      }
+    }
+
+    // thlch-dashboard（mrli-thlch.web.app）：訪客可睇，只限主人改。
+    match /dashboards/master_dashboard {
+      allow read: if true;
+      allow create, update, delete: if isOwner();
+    }
+
+    // 同一個 dashboard 嘅 EDB 課程資料。
+    match /eservice/courses {
+      allow read: if true;
+      allow create, update, delete: if isOwner();
+    }
+
+    // task list：每個 Google 帳戶只可以讀寫自己嗰份。
+    match /deadline_fighter/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // science_hub：有興趣紀錄（tswgps-science-page README「有興趣紀錄」）
+    match /science_hub/interests/entries/{entryId} {
+      function signedIn() {
+        return request.auth != null && request.auth.token.email != null;
+      }
+      function mail() {
+        return request.auth.token.email.lower();
+      }
+      function schoolUser() {
+        return signedIn() && (mail().matches('.*@tswgps[.]edu[.]hk') || mail() == 'thomasthlch@gmail.com');
+      }
+      function hubAdmin() {
+        return signedIn() && mail() in [
+          'thomasthlch@gmail.com'
+          ];
+      }
+      allow read: if hubAdmin() || (schoolUser() && resource.data.uid == request.auth.uid);
+      allow create: if schoolUser()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == mail()
+        && request.resource.data.status == 'interested'
+        && request.resource.data.cancelledAt == null
+        && request.resource.data.interestedAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && !request.resource.data.keys().hasAny(['mark', 'markAt'])
+        && entryId == request.auth.uid + '_' + request.resource.data.courseCode;
+      allow update: if schoolUser()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.courseCode == resource.data.courseCode
+        && request.resource.data.email == mail()
+        && request.resource.data.updatedAt == request.time
+        && (
+          (resource.data.status == 'interested'
+            && request.resource.data.status == 'cancelled'
+            && request.resource.data.cancelledAt == request.time
+            && request.resource.data.interestedAt == resource.data.interestedAt
+            && request.resource.data.get('mark', null) == resource.data.get('mark', null)
+            && request.resource.data.get('markAt', null) == resource.data.get('markAt', null))
+          || (resource.data.status == 'cancelled'
+            && request.resource.data.status == 'interested'
+            && request.resource.data.interestedAt == request.time
+            && request.resource.data.cancelledAt == resource.data.cancelledAt
+            && !request.resource.data.keys().hasAny(['mark', 'markAt']))
+        );
+      allow update: if hubAdmin()
+        && resource.data.status == 'interested'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mark', 'markAt'])
+        && request.resource.data.mark in ['yes', 'no', 'pending']
+        && request.resource.data.markAt == request.time;
+      allow delete: if false;
+    }
+
+    // science_hub：科任寫分權限 + staff library（PR #21 / #29 year-prefix）
+    // 分數寫入：hubAdmin 或該班科任（assignments）；名冊／schema／notes／任教庫：hubAdmin。
+    // 每個學年都加前綴，例如 26-27_term1_p4；scoreId 一律 schoolYear_ + legacy。
+    // 保留 inventory／dashboards／eservice／deadline_fighter 於本檔其他 match。
+    // 不刪除未加前綴嘅舊文件。
+
+    function hubSignedIn() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function hubMail() {
+      return request.auth.token.email.lower();
+    }
+    function hubSchoolUser() {
+      return hubSignedIn()
+        && request.auth.token.email_verified == true
+        && (
+          hubMail().matches('.+@tswgps[.]edu[.]hk')
+          || hubMail() == 'thomasthlch@gmail.com'
+        );
+    }
+    function hubAdmin() {
+      return hubSignedIn() && hubMail() in [
+        'thomasthlch@gmail.com'
+        ];
+    }
+    function staffPath() {
+      return /databases/$(database)/documents/science_hub/scoring/staff/library;
+    }
+    function teaches(classId) {
+      return exists(staffPath())
+        && get(staffPath()).data.assignments.keys().hasAny([classId])
+        && hubMail() in get(staffPath()).data.assignments[classId];
+    }
+    function canScore(classId) {
+      return hubAdmin() || (hubSchoolUser() && teaches(classId));
+    }
+
+    match /science_hub/scoring/staff/{docId} {
+      allow read: if hubSchoolUser() && docId == 'library';
+      allow create, update: if hubAdmin()
+        && docId == 'library'
+        && request.resource.data.teachers is list
+        && request.resource.data.assignments is map
+        && request.resource.data.updatedBy == hubMail()
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 每個學年都加前綴，26-27 與其他學年相同，例如 26-27_term1_p4。
+    match /science_hub/scoring/schemas/{schemaId} {
+      function schemaPrefixed() {
+        return schemaId.matches('[0-9]{2}-[0-9]{2}_.*');
+      }
+      function schemaTerm() {
+        return schemaPrefixed() ? schemaId.split('_')[1] : schemaId.split('_')[0];
+      }
+      function schemaGrade() {
+        return schemaPrefixed() ? schemaId.split('_')[2] : schemaId.split('_')[1];
+      }
+      function schemaDocOk() {
+        return schemaId.matches('(term1|term2)_p[45]')
+          || schemaId.matches('[0-9]{2}-[0-9]{2}_(term1|term2)_p[45]');
+      }
+      allow read: if hubSchoolUser() && schemaDocOk();
+      allow create, update: if hubAdmin()
+        && schemaDocOk()
+        && request.resource.data.termId == schemaTerm()
+        && request.resource.data.grade == schemaGrade()
+        && request.resource.data.sections is list
+        && request.resource.data.sections.size() <= 12
+        && request.resource.data.sectionsExact == true
+        && request.resource.data.updatedBy == hubMail()
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    // 名冊正式路徑。每個學年都加前綴，例如 26-27_term1_p5_5A。
+    // 學校帳號可讀，只有管理員可寫。應用程式不再使用 p5_scoring。
+    // 舊未加前綴文件仍可讀（classDocOk 同時接受兩種），唔刪。
+    match /science_hub/scoring/classes/{classDoc} {
+      function classDocOk() {
+        return classDoc.matches('(term1|term2)_p[45]_[45][A-E]')
+          || classDoc.matches('[0-9]{2}-[0-9]{2}_(term1|term2)_p[45]_[45][A-E]');
+      }
+      allow read: if hubSchoolUser() && classDocOk();
+      allow create, update: if hubAdmin() && classDocOk();
+      allow delete: if false;
+    }
+
+    match /science_hub/scoring/notes/{noteId} {
+      function noteDocOk() {
+        return noteId.matches('(term1|term2)_p[45]')
+          || noteId.matches('[0-9]{2}-[0-9]{2}_(term1|term2)_p[45]');
+      }
+      allow read: if hubSchoolUser() && noteDocOk();
+      allow create, update: if hubAdmin()
+        && noteDocOk()
+        && request.resource.data.text is string
+        && request.resource.data.text.size() < 500
+        && request.resource.data.updatedBy == hubMail()
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /science_hub/scoring/scores/{scoreId} {
+      function sheetOk() {
+        return request.resource.data.sheetId in ['assess1', 'assess2', 'summary']
+          || request.resource.data.sheetId.matches('group[a-z0-9]{4,24}');
+      }
+      function gradeMatchesClass() {
+        return (request.resource.data.grade == 'p4'
+            && request.resource.data.classId.matches('4[A-E]'))
+          || (request.resource.data.grade == 'p5'
+            && request.resource.data.classId.matches('5[A-E]'));
+      }
+      function legacyScoreId() {
+        return request.resource.data.termId + '_' + request.resource.data.grade + '_'
+          + request.resource.data.classId + '_' + request.resource.data.sheetId + '_'
+          + string(request.resource.data.seat);
+      }
+      // 每個學年（包括 26-27）的文件編號都是 schoolYear + '_' + 舊編號。
+      // 例如 26-27_term1_p5_5A_summary_1。沒有前綴的編號不可寫。
+      function scoreYear() {
+        return request.resource.data.schoolYear;
+      }
+      function scoreIdOk() {
+        return scoreYear() is string
+          && scoreYear().matches('[0-9]{2}-[0-9]{2}')
+          && scoreId == scoreYear() + '_' + legacyScoreId();
+      }
+      // List/listen only sends classId (app also adds termId/grade/schoolYear). Requiring
+      // resource.data.termId/grade here rejects the query even for hub admins.
+      // Keep hubSchoolUser/hubMail (combined file) — do not paste repo mail()/schoolUser().
+      // 舊未加前綴分數文件仍可讀（只要 classId 合規），唔刪。
+      allow read: if hubSchoolUser()
+        && resource.data.classId.matches('[45][A-E]');
+      allow create, update: if canScore(request.resource.data.classId)
+        && request.resource.data.classId.matches('[45][A-E]')
+        && request.resource.data.termId in ['term1', 'term2']
+        && request.resource.data.grade in ['p4', 'p5']
+        && gradeMatchesClass()
+        && sheetOk()
+        && request.resource.data.seat is int
+        && request.resource.data.seat > 0
+        && request.resource.data.seat < 1000
+        && request.resource.data.studentNo == request.resource.data.seat
+        && request.resource.data.updatedBy == hubMail()
+        && request.resource.data.updatedAt == request.time
+        && scoreIdOk();
+      allow delete: if false;
+    }
+
+    // 小六科學溫習站：每位已登入同學只可以讀寫自己嘅進度。
+    match /p6science/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.v == 1
+        && request.resource.data.coins is number
+        && request.resource.data.coins >= 0
+        && request.resource.data.animals is list
+        && request.resource.data.animals.size() <= 500
+        && request.resource.data.stats is map
+        && request.resource.data.solo is map;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 科學科準則牆：已驗證嘅 @tswgps.edu.hk 老師可讀寫。
+    // 只涵蓋 sci_criteria_wall 呢棵樹，唔影響上面其他集合。
+    function sciCriteriaWallTeacher() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.+@[tT][sS][wW][gG][pP][sS]\\.[eE][dD][uU]\\.[hH][kK]$');
+    }
+
+    match /sci_criteria_wall/{document=**} {
+      allow read, write: if sciCriteriaWallTeacher();
+    }
+
+  }
+}

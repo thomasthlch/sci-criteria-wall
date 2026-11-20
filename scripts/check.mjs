@@ -171,6 +171,21 @@ const storageRules = fs.readFileSync(path.join(root, "firebase/storage.sci_crite
 if (rules.includes("rules_version") || storageRules.includes("rules_version")) {
   fail("規則片段不應是可單獨部署的完整規則檔");
 }
+const fullRulesPath = path.join(root, "firebase/firestore.rules");
+if (!fs.existsSync(fullRulesPath)) fail("缺少完整 Firestore 規則 firebase/firestore.rules");
+const fullRules = fs.existsSync(fullRulesPath) ? fs.readFileSync(fullRulesPath, "utf8") : "";
+if (!fullRules.startsWith("rules_version = '2';")) fail("完整 Firestore 規則應以 rules_version 開頭");
+for (const marker of [
+  "match /dashboards/master_dashboard",
+  "match /inventory/items",
+  "match /deadline_fighter/{uid}",
+  "match /science_hub/scoring/scores/{scoreId}",
+  "match /p6science/{userId}",
+  "match /sci_criteria_wall/{document=**}",
+  "function sciCriteriaWallTeacher()",
+]) {
+  if (!fullRules.includes(marker)) fail(`完整 Firestore 規則缺少 ${marker}`);
+}
 if (!rules.includes("match /sci_criteria_wall/{document=**}")) fail("Firestore 片段缺少準則牆 match");
 if (!storageRules.includes("match /sci_criteria_wall/{allPaths=**}")) fail("Storage 片段缺少準則牆 match");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
@@ -185,4 +200,4 @@ if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
-console.log(`準則牆檢查通過：${seed.length} 題示範、2 票定案、規則片段與 Pages workflow。`);
+console.log(`準則牆檢查通過：${seed.length} 題示範、2 票定案、完整 Firestore 規則與 Pages workflow。`);
