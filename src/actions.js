@@ -17,6 +17,7 @@ import {
 import {
   deductionChoicesHtml,
   fillBoard,
+  paintMarkingResults,
   showToast,
   uploadPillsHtml,
 } from "./render.js";
@@ -194,6 +195,7 @@ function checkDuplicate() {
 }
 
 let similarTimer = 0;
+let markingTimer = 0;
 
 function clearSimilarBox(id) {
   const box = document.getElementById(id);
@@ -228,6 +230,11 @@ function paintSimilarCriteria(boxId, text) {
 function scheduleSimilarCriteria(boxId, text) {
   window.clearTimeout(similarTimer);
   similarTimer = window.setTimeout(() => paintSimilarCriteria(boxId, text), 250);
+}
+
+function scheduleMarkingSearch() {
+  window.clearTimeout(markingTimer);
+  markingTimer = window.setTimeout(() => paintMarkingResults(state), 250);
 }
 
 function focusCriterion(id) {
@@ -404,6 +411,8 @@ function switchQuestion(id) {
   state.activeQuestionId = id;
   state.activeSubPartId = "";
   state.banner = "";
+  const query = document.getElementById("marking-query");
+  if (query) query.value = "";
   persistSelection();
   sync.watchParts(id);
   refreshBoard();
@@ -439,6 +448,7 @@ export function onInput(element) {
     scheduleSimilarCriteria("upload-similar", element.value);
   }
   if (element.dataset.input === "criterion-text") scheduleSimilarCriteria("direct-similar", element.value);
+  if (element.dataset.input === "marking-query") scheduleMarkingSearch();
 }
 
 export function onChange(element) {
