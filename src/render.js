@@ -6,7 +6,10 @@ import {
   formatTime,
   getDeductionBadgeInfo,
   ladderGridClass,
+  partChipLabel,
   questionTotalScore,
+  showPartPicker,
+  showPendingPanel,
   safeHttpsUrl,
   voteStatus,
 } from "./logic.js";
@@ -58,7 +61,7 @@ export function renderSubpartTabsHtml(state) {
           ? "bg-slate-900 text-white shadow-md ring-4 ring-blue-300"
           : "bg-slate-100 hover:bg-blue-50 text-slate-800 border-2 border-slate-300"
       }">
-        <span>📌 第 ${index + 1} 部分：${escapeHtml(part.name)}（佔 ${part.maxScore} 分）</span>
+        <span>📌 ${escapeHtml(partChipLabel(part, index))}</span>
         ${pending > 0 ? `<span class="bg-amber-400 text-slate-950 text-sm font-black px-2.5 py-0.5 rounded-full">${pending} 待投</span>` : ""}
       </button>
     `;
@@ -105,7 +108,7 @@ export function renderPendingHtml(state) {
   if (!part || !question) return "";
   const partIndex = [...state.parts].sort(byOrder).findIndex((item) => item.id === part.id);
   const cases = [...state.cases].sort(byNewest);
-  const label = `第 ${partIndex + 1} 部分：${part.name}（佔 ${part.maxScore} 分）`;
+  const label = state.parts.length > 1 ? partChipLabel(part, partIndex) : "";
   if (!state.childrenReady) {
     return { label, countText: "載入中", empty: false, html: `<div class="text-slate-600 font-bold">正在載入待投票擬問…</div>` };
   }
@@ -116,7 +119,7 @@ export function renderPendingHtml(state) {
       empty: true,
       html: `
         <div class="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl py-4 px-5">
-          <div class="text-base sm:text-lg font-bold text-slate-600">🎉「${escapeHtml(part.name)}」暫時冇待投票擬問。遇到唔肯定扣幾分嘅作答，可以上載答案放上嚟投票。</div>
+          <div class="text-sm sm:text-base font-bold text-slate-600">🎉${label ? `「${escapeHtml(label)}」` : ""}暫時冇待投票擬問。遇到唔肯定扣幾分嘅作答，可以上載答案放上嚟投票。</div>
         </div>
       `,
     };
@@ -288,9 +291,8 @@ export function fillBoard(state) {
   const ladderSection = document.getElementById("ladder-section");
   const showEmpty = state.questionsReady && !state.error && state.questions.length === 0;
   if (empty) empty.hidden = !showEmpty;
-  [bannerSection, pendingSection, ladderSection].forEach((section) => {
-    if (section) section.hidden = showEmpty;
-  });
+  if (bannerSection) bannerSection.hidden = showEmpty;
+  if (ladderSection) ladderSection.hidden = showEmpty;
   if (status) {
     if (state.error) {
       status.hidden = false;
@@ -306,20 +308,35 @@ export function fillBoard(state) {
     }
   }
 
+  const folded = state.folded !== false;
+  const foldBody = document.getElementById("banner-fold");
+  const foldToggle = document.getElementById("fold-toggle");
+  const partPicker = document.getElementById("part-picker");
+  if (foldBody) foldBody.hidden = folded;
+  if (foldToggle) {
+    foldToggle.textContent = folded ? "展開題幹" : "收起題幹";
+    foldToggle.setAttribute("aria-expanded", folded ? "false" : "true");
+  }
+  if (partPicker) partPicker.hidden = !showPartPicker(parts.length);
   if (!question) {
     title.textContent = "未有題目";
     total.textContent = "";
     summary.textContent = "";
+    if (summary) summary.hidden = true;
     content.textContent = "";
     if (subTabs) subTabs.innerHTML = "";
   } else {
     title.textContent = question.title || "";
     total.textContent = state.partsReady ? `共 ${questionTotalScore(parts)} 分` : "載入中";
-    summary.textContent = state.partsReady
-      ? parts.map((part, index) => `第 ${index + 1} 部分：${part.name} (${part.maxScore}分)`).join(" ＋ ")
-      : "正在載入分部…";
+    const severalParts = showPartPicker(parts.length);
+    if (summary) {
+      summary.hidden = !severalParts;
+      summary.textContent = severalParts
+        ? parts.map((part, index) => partChipLabel(part, index)).join(" ＋ ")
+        : "";
+    }
     content.textContent = question.content || "";
-    if (subTabs) subTabs.innerHTML = state.partsReady ? renderSubpartTabsHtml(state) : "";
+    if (subTabs) subTabs.innerHTML = state.partsReady && severalParts ? renderSubpartTabsHtml(state) : "";
   }
   const deleteSlot = document.getElementById("question-delete-slot");
   if (deleteSlot) {
@@ -332,7 +349,15 @@ export function fillBoard(state) {
   const pendingLabel = document.getElementById("pending-subpart-label");
   const pendingCount = document.getElementById("pending-count-badge");
   const pendingBox = document.getElementById("pending-votes-container");
-  if (pendingLabel) pendingLabel.textContent = pending.label || "";
+  const activePart = parts.find((part) => part.id === state.activeSubPartId);
+  const livePending = state.childrenReady ? state.cases.length : Number(activePart?.pendingCount || 0);
+  if (pendingSection) {
+    pendingSection.hidden = showEmpty || !showPendingPanel({ folded: state.folded !== false, pendingCount: livePending });
+  }
+  if (pendingLabel) {
+    pendingLabel.textContent = pending.label || "";
+    pendingLabel.hidden = !pending.label;
+  }
   if (pendingCount) {
     pendingCount.textContent = pending.countText || "";
     pendingCount.className = pending.empty

@@ -4,6 +4,7 @@ import {
   byOrder,
   canDeleteQuestion,
   clampDeduction,
+  FOLD_STORAGE_KEY,
   clampMaxScore,
   consensusBannerText,
   escapeHtml,
@@ -384,6 +385,11 @@ export function onClick(element, event) {
   if (action === "switch-part") switchPart(element.dataset.id);
   if (action === "hide-banner") {
     state.banner = "";
+    refreshBoard();
+  }
+  if (action === "toggle-fold") {
+    state.folded = !state.folded;
+    localStorage.setItem(FOLD_STORAGE_KEY, state.folded ? "1" : "0");
     refreshBoard();
   }
   if (action === "pick-photo") document.getElementById("real-photo-input").click();

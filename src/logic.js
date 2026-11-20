@@ -213,6 +213,29 @@ export function getDeductionBadgeInfo(deduction, maxScore) {
   };
 }
 
+export const FOLD_STORAGE_KEY = "sci_criteria_wall_folded";
+
+export function readFolded(stored) {
+  return stored !== "0";
+}
+
+export function partChipLabel(part, index) {
+  const score = Number(part?.maxScore) || 0;
+  const fallback = `第 ${index + 1} 部分`;
+  const name = String(part?.name || "").trim();
+  if (!name || name === fallback) return `${fallback} · ${score}分`;
+  return `${fallback}：${name} · ${score}分`;
+}
+
+export function showPartPicker(partCount) {
+  return Number(partCount) > 1;
+}
+
+export function showPendingPanel({ folded, pendingCount }) {
+  if (Number(pendingCount) > 0) return true;
+  return !folded;
+}
+
 export function ladderGridClass(maxScore) {
   if (maxScore <= 1) return "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start";
   if (maxScore === 2) return "grid grid-cols-1 lg:grid-cols-3 gap-3 items-start";
