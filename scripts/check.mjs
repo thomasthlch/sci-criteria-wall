@@ -14,6 +14,10 @@ import {
   isSeedCase,
   isSeedCriterion,
   openWallAfterCleanup,
+  partChipLabel,
+  readFolded,
+  showPartPicker,
+  showPendingPanel,
   tallyVotes,
   voteStatus,
 } from "../src/logic.js";
@@ -258,6 +262,17 @@ await openWallAfterCleanup(
   },
 );
 if (!synced || !warned) fail("清走示範題失敗時仍要開始同步");
+if (!readFolded(null) || !readFolded("1") || readFolded("0")) fail("題幹預設收起，只有明確展開先記住");
+if (showPendingPanel({ folded: true, pendingCount: 0 })) fail("收起時冇待投票不應佔位");
+if (!showPendingPanel({ folded: true, pendingCount: 1 })) fail("有待投票時應保持顯示");
+if (!showPendingPanel({ folded: false, pendingCount: 0 })) fail("展開時應顯示待投票區");
+if (showPartPicker(1) || !showPartPicker(2)) fail("只有一個分部時不應再顯示分部按鈕");
+if (partChipLabel({ name: "第 1 部分", maxScore: 2 }, 0) !== "第 1 部分 · 2分") {
+  fail("分部名稱不應重複成「第 1 部分：第 1 部分」");
+}
+if (partChipLabel({ name: "相同點", maxScore: 2 }, 0) !== "第 1 部分：相同點 · 2分") {
+  fail("有獨立名稱的分部應保留名稱");
+}
 if (fs.existsSync(path.join(root, "src/seed-data.js"))) fail("不應再附帶示範題資料");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
 if (!workflow.includes("upload-pages-artifact") || !workflow.includes("deploy-pages")) {

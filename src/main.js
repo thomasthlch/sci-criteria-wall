@@ -8,7 +8,7 @@ import {
 } from "firebase/auth";
 import { closeTopModal, initActions, onChange, onClick, onInput, openUpload, syncOpenModals, usePhoto } from "./actions.js";
 import { auth } from "./firebase.js";
-import { explainDataError, friendlyAuthError, isAllowedAccount, openWallAfterCleanup, profileOf, resolvePartId, resolveQuestionId } from "./logic.js";
+import { explainDataError, FOLD_STORAGE_KEY, friendlyAuthError, isAllowedAccount, openWallAfterCleanup, profileOf, readFolded, resolvePartId, resolveQuestionId } from "./logic.js";
 import { fillBoard } from "./render.js";
 import { cleanupSeedArtifacts, listenChildren, listenParts, listenQuestions } from "./store.js";
 
@@ -33,6 +33,7 @@ const state = {
   error: "",
   banner: "",
   holdSelectionUntil: 0,
+  folded: readFolded(localStorage.getItem(FOLD_STORAGE_KEY)),
 };
 
 let questionsUnsub = null;
