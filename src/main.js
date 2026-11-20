@@ -8,13 +8,13 @@ import {
 } from "firebase/auth";
 import { closeTopModal, initActions, onChange, onClick, onInput, openUpload, syncOpenModals, usePhoto } from "./actions.js";
 import { auth } from "./firebase.js";
-import { explainDataError, friendlyAuthError, isSchoolEmail, profileOf, resolvePartId, resolveQuestionId } from "./logic.js";
+import { explainDataError, friendlyAuthError, isAllowedAccount, profileOf, resolvePartId, resolveQuestionId } from "./logic.js";
 import { fillBoard } from "./render.js";
-import { ensureSeed, listenChildren, listenParts, listenQuestions } from "./store.js";
+import { cleanupSeedArtifacts, listenChildren, listenParts, listenQuestions } from "./store.js";
 
 const provider = new GoogleAuthProvider();
 provider.addScope("email");
-provider.setCustomParameters({ hd: "tswgps.edu.hk", prompt: "select_account" });
+provider.setCustomParameters({ prompt: "select_account" });
 auth.languageCode = "zh-TW";
 
 const saved = loadSelection();
@@ -57,8 +57,8 @@ function loadSelection() {
   try {
     const raw = JSON.parse(localStorage.getItem("sci_criteria_wall_selection") || "{}");
     return {
-      activeQuestionId: typeof raw.activeQuestionId === "string" ? raw.activeQuestionId : "q1",
-      activeSubPartId: typeof raw.activeSubPartId === "string" ? raw.activeSubPartId : "sp_q1_1",
+      activeQuestionId: typeof raw.activeQuestionId === "string" ? raw.activeQuestionId : "",
+      activeSubPartId: typeof raw.activeSubPartId === "string" ? raw.activeSubPartId : "",
     };
   } catch {
     return { activeQuestionId: "q1", activeSubPartId: "sp_q1_1" };
@@ -210,8 +210,8 @@ async function signIn() {
 
 async function enterApp(user) {
   const email = user.email || "";
-  if (!isSchoolEmail(email, user.emailVerified)) {
-    rejectReason = `只限已驗證嘅 @tswgps.edu.hk Google 帳戶使用。${email ? `（${email}）` : ""}系統已幫你登出。`;
+  if (!isAllowedAccount(email, user.emailVerified)) {
+    rejectReason = `只限已驗證嘅 @tswgps.edu.hk 學校帳戶，或已授權的管理員帳戶。${email ? `（${email}）` : ""}系統已幫你登出。`;
     await signOut(auth);
     return;
   }
@@ -219,7 +219,7 @@ async function enterApp(user) {
   if (enteredUid === user.uid && questionsUnsub) return;
   enteredUid = user.uid;
   try {
-    await ensureSeed(user);
+    await cleanupSeedArtifacts();
     startSync();
   } catch (error) {
     onError(error);

@@ -2,6 +2,7 @@ import { deleteStoredPhoto, uploadCasePhoto } from "./images.js";
 import {
   byNewest,
   byOrder,
+  canDeleteQuestion,
   clampDeduction,
   clampMaxScore,
   consensusBannerText,
@@ -24,6 +25,7 @@ import {
   createQuestion,
   deleteCase,
   deleteCriterion,
+  deleteQuestion,
   saveQuestionEdits,
   updateCase,
   updateCriterion,
@@ -434,6 +436,18 @@ export function onClick(element, event) {
     const id = element.dataset.id;
     openConfirm("確定要刪除呢一項？", "刪除後會即時從協作板上移除。", () => removeEntry(type, id));
   }
+  if (action === "ask-delete-question") {
+    const question = state.questions.find((item) => item.id === element.dataset.id);
+    if (!canDeleteQuestion(state.user, question)) {
+      showToast("只有建立呢條題目的老師，或管理員，先可以刪除。", "warning");
+      return;
+    }
+    openConfirm(
+      "確定刪除呢條題目？",
+      "題目、所有分部、扣分標準、待投票個案同相片都會移除。",
+      () => removeQuestion(question.id),
+    );
+  }
   if (action === "close-confirm") closeConfirm();
   if (action === "confirm-ok") {
     const callback = ui.confirm;
@@ -588,6 +602,18 @@ async function saveEdit() {
       }
     }
     closeEdit();
+  });
+}
+
+async function removeQuestion(questionId) {
+  await withBusy(async () => {
+    await deleteQuestion(state.user, questionId);
+    if (state.activeQuestionId === questionId) {
+      state.activeQuestionId = "";
+      state.activeSubPartId = "";
+      persistSelection();
+    }
+    showToast("已刪除呢條題目。", "info");
   });
 }
 

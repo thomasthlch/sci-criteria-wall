@@ -23,6 +23,20 @@ body {
   animation: fadeSlideUp 0.22s ease-out forwards;
 }
 
+.tab-scroller {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
+}
+
+.tab-scroller > * {
+  flex: 0 0 auto;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

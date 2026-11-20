@@ -1,6 +1,7 @@
 import {
   byNewest,
   byOrder,
+  canDeleteQuestion,
   escapeHtml,
   formatTime,
   getDeductionBadgeInfo,
@@ -34,14 +35,14 @@ export function renderQuestionTabsHtml(state) {
     const scoreLabel = `共 ${total} 分`;
     const pending = pendingCountForQuestion(question, state);
     return `
-      <button type="button" data-action="switch-question" data-id="${escapeHtml(question.id)}" class="px-4 py-3 rounded-2xl text-base sm:text-lg font-black transition flex items-center gap-2.5 cursor-pointer ${
+      <button type="button" data-action="switch-question" data-id="${escapeHtml(question.id)}" class="shrink-0 max-w-[16rem] sm:max-w-[20rem] overflow-hidden px-3 py-2 rounded-xl text-sm sm:text-base font-black transition flex items-center gap-2 cursor-pointer ${
         active
           ? "bg-blue-700 text-white shadow-md ring-2 ring-blue-300"
           : "bg-white hover:bg-blue-50 text-slate-800 border-2 border-slate-300"
       }">
-        <span>${escapeHtml(question.title)}</span>
-        <span class="text-sm px-2.5 py-0.5 rounded-lg font-black ${active ? "bg-blue-900/60 text-blue-100" : "bg-slate-100 text-slate-700"}">${scoreLabel}</span>
-        ${pending > 0 ? `<span class="text-xs sm:text-sm px-2.5 py-0.5 rounded-full font-black bg-amber-400 text-slate-950">${pending} 待投</span>` : ""}
+        <span class="truncate min-w-0">${escapeHtml(question.title)}</span>
+        <span class="text-sm px-2.5 py-0.5 rounded-lg font-black whitespace-nowrap ${active ? "bg-blue-900/60 text-blue-100" : "bg-slate-100 text-slate-700"}">${scoreLabel}</span>
+        ${pending > 0 ? `<span class="text-xs px-2 py-0.5 rounded-full font-black whitespace-nowrap bg-amber-400 text-slate-950">${pending} 待投</span>` : ""}
       </button>
     `;
   }).join("");
@@ -52,7 +53,7 @@ export function renderSubpartTabsHtml(state) {
     const active = part.id === state.activeSubPartId;
     const pending = pendingCountForPart(part, state);
     return `
-      <button type="button" data-action="switch-part" data-id="${escapeHtml(part.id)}" class="px-5 py-3.5 rounded-2xl text-lg sm:text-[19px] font-black transition flex items-center gap-2.5 cursor-pointer ${
+      <button type="button" data-action="switch-part" data-id="${escapeHtml(part.id)}" class="px-3.5 py-2.5 rounded-2xl text-base sm:text-lg font-black transition flex items-center gap-2 cursor-pointer ${
         active
           ? "bg-slate-900 text-white shadow-md ring-4 ring-blue-300"
           : "bg-slate-100 hover:bg-blue-50 text-slate-800 border-2 border-slate-300"
@@ -121,7 +122,7 @@ export function renderPendingHtml(state) {
     };
   }
   const html = `
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+    <div class="${cases.length > 1 ? "grid grid-cols-1 xl:grid-cols-2 gap-4" : "grid grid-cols-1 gap-4"}">
       ${cases.map((item) => {
         const status = voteStatus(item.votes);
         const mine = item.votes?.[state.user?.uid];
@@ -280,6 +281,15 @@ export function fillBoard(state) {
   tabs.innerHTML = state.questionsReady ? renderQuestionTabsHtml(state) : "";
   if (syncLabel) syncLabel.textContent = state.questionsReady && !state.error ? "即時同步中" : "連線中";
 
+  const empty = document.getElementById("empty-wall");
+  const bannerSection = document.getElementById("question-banner");
+  const pendingSection = document.getElementById("pending-votes-section");
+  const ladderSection = document.getElementById("ladder-section");
+  const showEmpty = state.questionsReady && !state.error && state.questions.length === 0;
+  if (empty) empty.hidden = !showEmpty;
+  [bannerSection, pendingSection, ladderSection].forEach((section) => {
+    if (section) section.hidden = showEmpty;
+  });
   if (status) {
     if (state.error) {
       status.hidden = false;
@@ -288,10 +298,6 @@ export function fillBoard(state) {
     } else if (!state.questionsReady) {
       status.hidden = false;
       status.textContent = "正在載入準則牆…";
-      status.className = "bg-white border-2 border-slate-200 text-slate-700 rounded-2xl px-4 py-3 font-bold";
-    } else if (!state.questions.length) {
-      status.hidden = false;
-      status.textContent = "準則牆未有題目。你可以新增第一題。";
       status.className = "bg-white border-2 border-slate-200 text-slate-700 rounded-2xl px-4 py-3 font-bold";
     } else {
       status.hidden = true;
@@ -313,6 +319,12 @@ export function fillBoard(state) {
       : "正在載入分部…";
     content.textContent = question.content || "";
     if (subTabs) subTabs.innerHTML = state.partsReady ? renderSubpartTabsHtml(state) : "";
+  }
+  const deleteSlot = document.getElementById("question-delete-slot");
+  if (deleteSlot) {
+    deleteSlot.innerHTML = question && canDeleteQuestion(state.user, question)
+      ? `<button type="button" data-action="ask-delete-question" data-id="${escapeHtml(question.id)}" class="bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold text-sm px-3 py-1.5 rounded-xl cursor-pointer">🗑️ 刪除呢條題目</button>`
+      : "";
   }
 
   const pending = renderPendingHtml(state);

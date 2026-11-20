@@ -1,19 +1,27 @@
 import {
   collection,
+  deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   runTransaction,
+  setDoc,
   writeBatch,
 } from "firebase/firestore";
 import { deleteStoredPhoto } from "./images.js";
 import { db } from "./firebase.js";
 import {
+  canDeleteQuestion,
   clampDeduction,
   clampMaxScore,
   extractAutoKeywords,
+  isEmptySeedQuestion,
+  isSeedCase,
+  isSeedCriterion,
+  isSeedHintId,
   profileOf,
   pushChange,
   tallyVotes,
@@ -28,10 +36,6 @@ import {
   questionsCollectionSegments,
   wallSegments,
 } from "./paths.js";
-import { buildSeedContent } from "./seed-data.js";
-
-const SEED_BASE_TIME = 1_700_000_000_000;
-
 function docRef(segments) {
   return doc(db, ...segments);
 }
@@ -104,91 +108,98 @@ export function listenChildren(questionId, partId, onData, onError) {
   return () => unsubs.forEach((stop) => stop());
 }
 
-export async function ensureSeed(user) {
-  const profile = profileOf(user);
-  const content = buildSeedContent();
-  await runTransaction(db, async (tx) => {
-    const wallSnap = await tx.get(wallRef());
-    if (wallSnap.exists() && wallSnap.data().seeded) return;
-    const now = Date.now();
-    tx.set(wallRef(), {
-      kind: "wall",
-      app: "sci-criteria-wall",
-      seeded: true,
-      seedVersion: 1,
-      seededAt: now,
-      seededBy: profile,
-    });
-    content.forEach((question, questionIndex) => {
-      const pendingCount = question.parts.reduce((sum, part) => sum + part.cases.length, 0);
-      tx.set(questionRef(question.id), {
-        title: question.title,
-        content: question.content,
-        order: questionIndex + 1,
-        pendingCount,
-        totalScore: question.parts.reduce((sum, part) => sum + Number(part.maxScore || 0), 0),
-        createdAt: SEED_BASE_TIME + questionIndex,
-        createdBy: profile,
-        updatedAt: SEED_BASE_TIME + questionIndex,
-        updatedBy: profile,
+async function deleteDocs(docs) {
+  for (let index = 0; index < docs.length; index += 400) {
+    const slice = docs.slice(index, index + 400);
+    const batch = writeBatch(db);
+    slice.forEach((item) => batch.delete(item.ref));
+    if (slice.length) await batch.commit();
+  }
+}
+
+export async function cleanupSeedArtifacts() {
+  const wallSnap = await getDoc(wallRef());
+  if (wallSnap.exists() && wallSnap.data().seedCleanupDone) return;
+  const questions = await getDocs(colRef(questionsCollectionSegments()));
+  let blockedShell = false;
+  for (const question of questions.docs) {
+    const parts = await getDocs(colRef(partsCollectionSegments(question.id)));
+    let remainingChildren = 0;
+    let keptCases = 0;
+    for (const part of parts.docs) {
+      const criteria = await getDocs(childCol(question.id, part.id, "criteria"));
+      const cases = await getDocs(childCol(question.id, part.id, "cases"));
+      const hints = await getDocs(childCol(question.id, part.id, "hints"));
+      const seedCriteria = [];
+      const seedCases = [];
+      const seedHints = [];
+      criteria.docs.forEach((item) => {
+        if (isSeedCriterion(item.data())) seedCriteria.push(item);
+        else remainingChildren += 1;
       });
-      question.parts.forEach((part, partIndex) => {
-        tx.set(partRef(question.id, part.id), {
-          name: part.name,
-          maxScore: part.maxScore,
-          order: partIndex,
-          pendingCount: part.cases.length,
-          createdAt: SEED_BASE_TIME + partIndex,
-          createdBy: profile,
-          updatedAt: SEED_BASE_TIME + partIndex,
-          updatedBy: profile,
-        });
-        part.criteria.forEach((item, index) => {
-          const at = SEED_BASE_TIME - index * 1000 - partIndex * 100;
-          tx.set(childRef(question.id, part.id, "criteria", item.id), {
-            deduction: item.deduction,
-            text: item.text,
-            reason: item.reason,
-            note: item.note || "",
-            source: item.source,
-            sourceLabel: item.sourceLabel,
-            photo: null,
-            changelog: [],
-            createdAt: at,
-            createdBy: profile,
-            updatedAt: at,
-            updatedBy: profile,
-          });
-        });
-        part.cases.forEach((item, index) => {
-          const at = SEED_BASE_TIME - index * 1000;
-          tx.set(childRef(question.id, part.id, "cases", item.id), {
-            text: item.text,
-            note: item.note || "",
-            question: item.question || "",
-            photo: null,
-            votes: {},
-            demoLean: item.demoLean || null,
-            author: { uid: "seed", displayName: "示範擬問", email: "" },
-            changelog: [],
-            createdAt: at,
-            updatedAt: at,
-          });
-        });
-        part.hints.forEach((item, index) => {
-          tx.set(childRef(question.id, part.id, "hints", item.id), {
-            keywords: item.keywords,
-            excludeKeywords: item.excludeKeywords || [],
-            matchedText: item.matchedText,
-            deduction: item.deduction,
-            reason: item.reason,
-            createdAt: SEED_BASE_TIME - index * 1000,
-            createdBy: profile,
-          });
-        });
+      let partCases = 0;
+      cases.docs.forEach((item) => {
+        if (isSeedCase(item.data())) seedCases.push(item);
+        else {
+          remainingChildren += 1;
+          partCases += 1;
+        }
       });
-    });
-  });
+      hints.docs.forEach((item) => {
+        if (isSeedHintId(item.id)) seedHints.push(item);
+        else remainingChildren += 1;
+      });
+      for (const item of [...seedCriteria, ...seedCases]) {
+        const photo = item.data().photo;
+        if (photo?.storagePath) await deleteStoredPhoto(photo.storagePath);
+      }
+      await deleteDocs([...seedCriteria, ...seedCases, ...seedHints]);
+      if (partCases !== Number(part.data().pendingCount || 0)) {
+        const batch = writeBatch(db);
+        batch.update(part.ref, { pendingCount: partCases, updatedAt: Date.now() });
+        await batch.commit();
+      }
+      keptCases += partCases;
+    }
+    const data = question.data();
+    const shell = { id: question.id, title: data.title, createdBy: data.createdBy };
+    if (isEmptySeedQuestion(shell, parts.docs, remainingChildren)) {
+      try {
+        await deleteDoc(question.ref);
+        await deleteDocs(parts.docs);
+        continue;
+      } catch (error) {
+        if (error?.code !== "permission-denied") throw error;
+        blockedShell = true;
+      }
+    }
+    if (keptCases !== Number(data.pendingCount || 0)) {
+      const batch = writeBatch(db);
+      batch.update(question.ref, { pendingCount: keptCases, updatedAt: Date.now() });
+      await batch.commit();
+    }
+  }
+  if (blockedShell) return;
+  await setDoc(wallRef(), {
+    kind: "wall",
+    app: "sci-criteria-wall",
+    seedCleanupDone: true,
+    seedCleanupAt: Date.now(),
+  }, { merge: true });
+}
+
+export async function deleteQuestion(user, questionId) {
+  const snap = await getDoc(questionRef(questionId));
+  if (!snap.exists()) return;
+  if (!canDeleteQuestion(profileOf(user), { id: questionId, ...snap.data() })) {
+    throw new Error("只有建立呢條題目的老師，或管理員，先可以刪除。");
+  }
+  await deleteDoc(snap.ref);
+  const parts = await getDocs(colRef(partsCollectionSegments(questionId)));
+  for (const part of parts.docs) {
+    await deletePartTree(questionId, part.id);
+  }
+  await deleteDocs(parts.docs);
 }
 
 function cleanText(value, max) {

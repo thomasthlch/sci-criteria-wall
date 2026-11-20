@@ -4,12 +4,17 @@
 // 請把下面的 function 與 match 合併進「現有」Storage 規則，放在
 //   service firebase.storage { match /b/{bucket}/o { ... } }
 // 裡面、與其他 match 並列。Firebase Hosting 部署不在本專案範圍。
+// 已驗證學校帳戶，以及已驗證管理員 thomasthlch@gmail.com，可讀寫 sci_criteria_wall/。
 // =============================================================================
 
     function sciCriteriaWallTeacher() {
       return request.auth != null
         && request.auth.token.email_verified == true
-        && request.auth.token.email.matches('.+@[tT][sS][wW][gG][pP][sS]\\.[eE][dD][uU]\\.[hH][kK]$');
+        && request.auth.token.email != null
+        && (
+          request.auth.token.email.lower().matches('.+@tswgps[.]edu[.]hk')
+          || request.auth.token.email.lower() == 'thomasthlch@gmail.com'
+        );
     }
 
     match /sci_criteria_wall/{allPaths=**} {
