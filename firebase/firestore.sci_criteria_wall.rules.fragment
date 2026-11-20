@@ -1,0 +1,17 @@
+// =============================================================================
+// FRAGMENT ONLY — 這不是完整的 firestore.rules。
+// 不可單獨部署。單獨部署會覆蓋 mrli-thlch 現有 dashboard、評分、deadline-fighter 等規則。
+// 請把下面的 function 與 match 合併進「現有」規則檔，放在
+//   service cloud.firestore { match /databases/{database}/documents { ... } }
+// 裡面、與其他 match 並列。Firebase Hosting 部署不在本專案範圍。
+// =============================================================================
+
+    function sciCriteriaWallTeacher() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.+@[tT][sS][wW][gG][pP][sS]\\.[eE][dD][uU]\\.[hH][kK]$');
+    }
+
+    match /sci_criteria_wall/{document=**} {
+      allow read, write: if sciCriteriaWallTeacher();
+    }

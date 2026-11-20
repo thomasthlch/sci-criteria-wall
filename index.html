@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>科學科長題目「扣分階梯」協作對齊板</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body class="min-h-screen pb-16 overflow-x-hidden selection:bg-blue-200 selection:text-blue-950">
+    <section id="gate" class="min-h-screen flex items-center justify-center px-4 py-10">
+      <div class="max-w-xl w-full bg-white border-2 border-slate-200 rounded-3xl shadow-sm p-6 sm:p-8 space-y-5">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl bg-blue-700 text-white flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🔬</div>
+          <div>
+            <h1 class="text-2xl font-black text-slate-900 leading-tight">科學科長題目「扣分階梯」協作對齊板</h1>
+            <p class="text-slate-500 font-bold">準則牆 · 只限 @tswgps.edu.hk</p>
+          </div>
+        </div>
+        <p class="text-lg text-slate-700 font-medium">用學校 Google 帳戶登入後，各位老師會睇到同一塊準則牆：題目、分部、扣分階梯同待投票個案都會即時同步。</p>
+        <p id="gate-message" class="bg-slate-50 border-2 border-slate-200 text-slate-700 font-bold rounded-2xl px-4 py-3">正在確認登入狀態…</p>
+        <button id="gate-signin" type="button" data-action="sign-in" disabled class="w-full bg-white hover:bg-slate-50 text-slate-900 border-2 border-slate-300 font-black text-lg py-4 rounded-2xl inline-flex items-center justify-center gap-3 cursor-pointer disabled:opacity-60">
+          <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+          </svg>
+          用 Google 學校帳戶登入
+        </button>
+      </div>
+    </section>
+
+    <div id="app" class="hidden">
+      <header class="bg-white border-b-2 border-slate-200 sticky top-0 z-30">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-blue-700 text-white flex items-center justify-center text-2xl shrink-0" aria-hidden="true">🔬</div>
+            <div>
+              <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">科學科長題目「扣分階梯」協作對齊板</h1>
+              <p class="text-sm sm:text-base text-slate-500 font-bold">準則牆 · 分部分獨立評分 · 扣分標準即時同步 · <span id="sync-label">連線中</span></p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="inline-flex items-center gap-2.5 bg-slate-50 border-2 border-slate-200 px-4 py-2 rounded-full" title="已透過 Google 教育帳號登入">
+              <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+                <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+                <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+              </svg>
+              <span class="text-left leading-tight">
+                <span id="user-name" class="block text-base sm:text-lg font-black text-slate-800"></span>
+                <span id="user-email" class="block text-xs sm:text-sm font-bold text-slate-500"></span>
+              </span>
+            </div>
+            <button type="button" data-action="sign-out" class="text-sm sm:text-base font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-3.5 py-2 rounded-2xl cursor-pointer">登出</button>
+          </div>
+        </div>
+      </header>
+
+      <nav class="bg-slate-200/85 border-b-2 border-slate-300" aria-label="題目切換">
+        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div id="question-tabs-container" class="flex flex-wrap items-center gap-2.5"></div>
+          <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button type="button" data-action="open-question" data-mode="edit" class="px-4 py-3 rounded-2xl text-base sm:text-lg font-black bg-white hover:bg-slate-100 text-slate-900 border-2 border-slate-300 cursor-pointer">✏️ 修改題目與分部</button>
+            <button type="button" data-action="open-question" data-mode="create" class="px-5 py-3 rounded-2xl text-base sm:text-lg font-black bg-slate-900 hover:bg-slate-800 text-white cursor-pointer">➕ 新增題目</button>
+          </div>
+        </div>
+      </nav>
+
+      <main class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
+        <p id="board-status" class="bg-white border-2 border-slate-200 text-slate-700 rounded-2xl px-4 py-3 font-bold">正在確認登入狀態…</p>
+        <section class="bg-white border-2 border-blue-200 rounded-3xl p-5 sm:p-6 space-y-5">
+          <div class="space-y-2.5">
+            <div class="flex flex-wrap items-center gap-3">
+              <h2 id="banner-q-title" class="text-xl sm:text-2xl font-black text-slate-900"></h2>
+              <span id="banner-q-totalscore" class="inline-flex items-center bg-blue-700 text-white font-black text-base sm:text-lg px-3.5 py-1 rounded-xl"></span>
+              <span id="banner-q-subparts-summary" class="text-sm sm:text-base font-bold text-blue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-xl"></span>
+            </div>
+            <p id="banner-q-content" class="text-lg sm:text-[19px] text-slate-800 font-medium leading-relaxed bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3"></p>
+          </div>
+          <div class="pt-2 border-t-2 border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+            <div class="space-y-1.5">
+              <div class="text-sm font-black text-slate-500">👇 請揀選要批改／對齊嘅評分部分（各部分完全獨立顯示）：</div>
+              <div id="subpart-tabs-container" class="flex flex-wrap items-center gap-3"></div>
+            </div>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              <button type="button" data-action="open-direct" data-deduction="0" class="bg-slate-100 hover:bg-slate-200 text-slate-900 border-2 border-slate-300 font-black text-lg px-5 py-4 rounded-2xl cursor-pointer">✍️ 直接文字新增標準</button>
+              <button type="button" data-action="open-upload" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg sm:text-xl px-6 py-4 rounded-2xl border-b-4 border-emerald-800 cursor-pointer">📸 影學生答案／上載 Sample</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="consensus-banner" class="hidden bg-emerald-100 border-2 border-emerald-500 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+          <div class="text-lg sm:text-xl font-black text-emerald-950" id="consensus-banner-text">已有 2 票同意同一個扣分，個案已歸入扣分欄</div>
+          <button type="button" data-action="hide-banner" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-base px-4 py-2 rounded-xl cursor-pointer">知道</button>
+        </div>
+
+        <section id="pending-votes-section" class="bg-white border-2 border-amber-300 rounded-3xl overflow-hidden">
+          <div class="bg-amber-100/90 border-b-2 border-amber-300 px-5 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2.5">
+              <h3 class="text-lg sm:text-xl font-black text-amber-950">🟡 待投票擬問（唔肯定扣幾分，放上去大家一齊投票）</h3>
+              <span id="pending-subpart-label" class="bg-white/90 border border-amber-300 text-amber-950 font-black text-sm sm:text-base px-3 py-0.5 rounded-xl"></span>
+            </div>
+            <span id="pending-count-badge" class="bg-amber-400 text-slate-950 font-black text-base px-3.5 py-1 rounded-full">0 題待投票</span>
+          </div>
+          <p class="px-5 sm:px-6 pt-4 text-sm sm:text-base font-bold text-amber-950">2 位已登入老師對同一個扣分投同意票，就會定案並放入階梯。唔使等到第 3 票。</p>
+          <div id="pending-votes-container" class="p-4 sm:p-6"></div>
+        </section>
+
+        <section class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+            <h3 id="ladder-section-heading" class="text-xl sm:text-2xl font-black text-slate-900">📊 扣分階梯對照板</h3>
+            <span class="text-sm sm:text-base font-bold text-slate-600">撳卡片「修改／調整扣分」可改扣分等級，卡片會移去對應欄。</span>
+          </div>
+          <div id="deduction-columns-container" class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"></div>
+        </section>
+      </main>
+
+      <div id="upload-modal" data-action="close-upload" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/70 overflow-y-auto p-3 sm:p-6">
+        <div class="max-w-[940px] mx-auto bg-white rounded-3xl border-2 border-slate-200 overflow-hidden my-2 sm:my-6">
+          <div class="bg-slate-100 border-b-2 border-slate-200 px-6 py-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-xl sm:text-2xl font-black text-slate-900">📸 影學生答案／上載 Sample</h2>
+              <p class="text-sm sm:text-base text-slate-600 font-medium">可上載相片或按 Ctrl + V 貼上截圖。答案文字要自己輸入或修改，系統唔會做 OCR。</p>
+            </div>
+            <button type="button" data-action="close-upload" class="bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-lg px-4 py-2.5 rounded-2xl cursor-pointer">✕ 關閉返回</button>
+          </div>
+          <div class="p-5 sm:p-7 space-y-6">
+            <div class="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 space-y-2">
+              <div class="text-base font-black text-blue-950">📌 呢份學生答案係針對邊一個「評分部分」？</div>
+              <div id="upload-subpart-pills" class="flex flex-wrap gap-2.5"></div>
+            </div>
+            <div class="space-y-3">
+              <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-full bg-blue-700 text-white font-black text-lg flex items-center justify-center">1</span>
+                <h3 class="text-xl font-black text-slate-900">選擇學生作答相片（可選）</h3>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input id="real-photo-input" data-change="photo" type="file" accept="image/*" capture="environment" class="hidden" />
+                <button type="button" data-action="pick-photo" class="bg-blue-700 hover:bg-blue-800 text-white font-black text-lg py-4 px-5 rounded-2xl cursor-pointer">📷 上載相片 / 影相</button>
+                <div class="bg-blue-50 border-2 border-dashed border-blue-300 rounded-2xl px-4 py-3 flex items-center justify-center text-center text-blue-950 font-bold text-base">📋 亦可直接按 <span class="mx-1 underline font-black">Ctrl + V</span> 貼上螢幕截圖</div>
+              </div>
+            </div>
+            <div class="space-y-6 pt-4 border-t-2 border-slate-200">
+              <div class="space-y-4">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-full bg-blue-700 text-white font-black text-lg flex items-center justify-center">2</span>
+                  <h3 class="text-xl font-black text-slate-900">核對答案文字，並檢查有冇先例</h3>
+                </div>
+                <div id="duplicate-alert-box" class="hidden bg-amber-100 border-4 border-amber-400 rounded-3xl p-5 space-y-3">
+                  <div id="duplicate-alert-heading" class="text-xl font-black text-amber-950">💡 等陣！之前已經有類似答案</div>
+                  <div id="duplicate-alert-content" class="bg-white border-2 border-amber-300 rounded-2xl p-4 text-lg font-bold text-slate-900 leading-relaxed"></div>
+                  <button id="duplicate-accept-btn" type="button" data-action="close-upload" class="bg-amber-600 hover:bg-amber-700 text-white font-black text-lg py-3 px-6 rounded-2xl cursor-pointer">👍 明白，跟返呢個標準（關閉視窗）</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <div class="bg-slate-100 border-2 border-slate-300 rounded-2xl p-3">
+                    <div class="text-sm font-bold text-slate-600 mb-2">學生答案相片預覽：</div>
+                    <div id="modal-photo-preview" class="w-full overflow-hidden rounded-xl bg-white border border-slate-200">
+                      <div class="text-slate-500 font-bold p-6 text-center">未上載相片。可以只填文字。</div>
+                    </div>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <label for="converted-textarea" class="block text-base font-black text-slate-800 mb-1">學生答案文字（請自行輸入或修改）：</label>
+                      <textarea id="converted-textarea" data-input="answer-text" rows="3" class="w-full text-[18px] font-bold text-slate-900 leading-relaxed p-3.5 border-2 border-blue-400 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200"></textarea>
+                    </div>
+                    <div>
+                      <label for="optional-note-input" class="block text-base font-bold text-slate-700 mb-1">自由備註（選填，例如「3B 某生」）：</label>
+                      <input id="optional-note-input" type="text" placeholder="例如：3B 某生 / 字跡較潦（可留空）" class="w-full text-[17px] p-3 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-4 pt-4 border-t-2 border-slate-200">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-8 h-8 rounded-full bg-blue-700 text-white font-black text-lg flex items-center justify-center">3</span>
+                  <h3 class="text-xl font-black text-slate-900">選擇處理方式（二選一）</h3>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div class="bg-emerald-50/80 border-2 border-emerald-300 rounded-3xl p-5 space-y-4">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-lg font-black text-emerald-950">軌道 A：確定扣幾分</span>
+                      <span class="text-sm font-bold bg-emerald-200 text-emerald-950 px-2.5 py-0.5 rounded-lg">免投票即時生效</span>
+                    </div>
+                    <p class="text-base text-slate-700">請揀選歸類到邊一欄：</p>
+                    <div id="track-a-deduction-buttons" class="flex flex-col gap-2"></div>
+                    <div>
+                      <label for="track-a-reason-input" class="block text-sm font-bold text-emerald-950 mb-1">扣分原因／評分說明（選填）：</label>
+                      <input id="track-a-reason-input" type="text" placeholder="例如：單邊比較漏寫地球對應" class="w-full text-[16px] p-3 border-2 border-emerald-300 rounded-2xl focus:outline-none focus:border-emerald-600" />
+                    </div>
+                    <button type="button" data-action="save-upload-direct" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg py-4 px-5 rounded-2xl border-b-4 border-emerald-800 cursor-pointer">✓ 確定直接加入扣分欄</button>
+                  </div>
+                  <div class="bg-amber-50/80 border-2 border-amber-300 rounded-3xl p-5 space-y-4">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-lg font-black text-amber-950">軌道 B：唔肯定，放上去投票</span>
+                      <span class="text-sm font-bold bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-lg">2 票同意就定案</span>
+                    </div>
+                    <div>
+                      <label for="vote-question-input" class="block text-base font-bold text-amber-950 mb-1">想問同事咩問題（疑問說明）：</label>
+                      <input id="vote-question-input" type="text" placeholder="例如：呢個講法夠唔夠科學？" class="w-full text-[16px] p-3 border-2 border-amber-300 rounded-2xl focus:outline-none focus:border-amber-500" />
+                    </div>
+                    <div>
+                      <div class="text-sm font-bold text-amber-950 mb-1.5">你初步傾向扣幾分（同時投出第 1 票）：</div>
+                      <div id="track-b-init-deductions" class="flex flex-col gap-2"></div>
+                    </div>
+                    <button type="button" data-action="submit-vote" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-lg py-4 px-5 rounded-2xl border-b-4 border-amber-700 cursor-pointer">? 放上去讓大家投票</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="direct-text-modal" data-action="close-direct" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/70 overflow-y-auto p-3 sm:p-6">
+        <div class="max-w-[700px] mx-auto bg-white rounded-3xl border-2 border-slate-200 overflow-hidden my-6">
+          <div class="bg-emerald-50 border-b-2 border-emerald-200 px-6 py-4 flex items-center justify-between gap-3">
+            <h2 class="text-xl sm:text-2xl font-black text-emerald-950">✍️ 直接文字新增扣分標準</h2>
+            <button type="button" data-action="close-direct" class="bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 font-black text-lg px-4 py-2 rounded-2xl cursor-pointer">✕ 取消</button>
+          </div>
+          <div class="p-6 space-y-5">
+            <div id="direct-text-subpart-banner" class="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 text-base font-black text-blue-950"></div>
+            <div class="space-y-2">
+              <label class="block text-lg font-black text-slate-900">1. 選擇歸類扣分等級：</label>
+              <div id="direct-text-deduction-buttons" class="flex flex-col gap-2"></div>
+            </div>
+            <div>
+              <label for="direct-text-content" class="block text-lg font-black text-slate-900 mb-1.5">2. 寫法／標準內容：</label>
+              <textarea id="direct-text-content" rows="3" placeholder="例如：指出蛋殼與地殼佔整體的比例同樣極薄。" class="w-full text-[18px] font-bold text-slate-900 p-3.5 border-2 border-blue-400 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200"></textarea>
+            </div>
+            <div>
+              <label for="direct-text-reason" class="block text-lg font-bold text-slate-800 mb-1.5">3. 扣分原因／評分備註（選填）：</label>
+              <input id="direct-text-reason" type="text" placeholder="例如：科學類比合理，照畀滿分" class="w-full text-[17px] p-3.5 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500" />
+            </div>
+            <button type="button" data-action="save-direct-text" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xl py-4 px-6 rounded-2xl border-b-4 border-emerald-800 cursor-pointer">✓ 確定加入扣分欄</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="question-modal" data-action="close-question" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/70 overflow-y-auto p-3 sm:p-6">
+        <div class="max-w-[840px] mx-auto bg-white rounded-3xl border-2 border-slate-200 overflow-hidden my-3 sm:my-6">
+          <div class="bg-blue-50 border-b-2 border-blue-200 px-6 py-4 flex items-center justify-between gap-3">
+            <h2 id="q-modal-heading" class="text-xl sm:text-2xl font-black text-blue-950">➕ 新增題目與設定分部</h2>
+            <button type="button" data-action="close-question" class="bg-white hover:bg-slate-100 text-slate-900 border border-slate-300 font-black text-lg px-4 py-2 rounded-2xl cursor-pointer">✕ 取消</button>
+          </div>
+          <div class="p-5 sm:p-7 space-y-6">
+            <div>
+              <label for="q-form-title" class="block text-lg font-black text-slate-900 mb-1.5">題目標題：</label>
+              <input id="q-form-title" type="text" placeholder="例如：第 4 題：密度與浮沉" class="w-full text-[18px] font-bold p-3.5 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label for="q-form-content" class="block text-lg font-black text-slate-900 mb-1.5">題目內容／要求：</label>
+              <textarea id="q-form-content" rows="3" placeholder="寫低完整題幹" class="w-full text-[18px] p-3.5 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500"></textarea>
+            </div>
+            <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 sm:p-5 space-y-4">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-lg sm:text-xl font-black text-slate-900">評分部分（Sub-parts）拆分設定：</h3>
+                  <p class="text-sm sm:text-base text-slate-600">系統會自動加總總分，並為每部分建立獨立扣分階梯。</p>
+                </div>
+                <div id="q-form-total-badge" class="bg-blue-700 text-white font-black text-lg px-4 py-2 rounded-2xl shrink-0">自動加總：共 0 分</div>
+              </div>
+              <div id="q-form-subparts-list" class="space-y-3"></div>
+              <button type="button" data-action="add-part-row" class="bg-blue-100 hover:bg-blue-200 text-blue-950 border-2 border-blue-300 font-black text-base sm:text-lg px-4 py-2.5 rounded-2xl cursor-pointer">➕ 新增一個評分部分</button>
+            </div>
+            <button type="button" data-action="save-question" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-black text-xl py-4 px-6 rounded-2xl border-b-4 border-blue-900 cursor-pointer">✓ 儲存題目與分部設定</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="edit-entry-modal" data-action="close-edit" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/70 overflow-y-auto p-3 sm:p-6">
+        <div class="max-w-[700px] mx-auto bg-white rounded-3xl border-2 border-slate-200 overflow-hidden my-6">
+          <div class="bg-slate-100 border-b-2 border-slate-200 px-6 py-4 flex items-center justify-between gap-3">
+            <h2 id="edit-entry-title" class="text-xl sm:text-2xl font-black text-slate-900">✏️ 修改／調整扣分</h2>
+            <button type="button" data-action="close-edit" class="bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-lg px-4 py-2 rounded-2xl cursor-pointer">✕ 取消</button>
+          </div>
+          <div class="p-6 space-y-5">
+            <div id="edit-entry-deduction-wrapper" class="space-y-2">
+              <label class="block text-lg font-black text-slate-900">調整扣分等級（儲存後會自動移至對應欄位）：</label>
+              <div id="edit-entry-deduction-buttons" class="flex flex-col gap-2 pt-1"></div>
+            </div>
+            <div>
+              <label for="edit-entry-text" class="block text-lg font-black text-slate-900 mb-1.5">作答／標準內容：</label>
+              <textarea id="edit-entry-text" rows="3" class="w-full text-[18px] font-bold text-slate-900 p-3.5 border-2 border-blue-400 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-200"></textarea>
+            </div>
+            <div id="edit-entry-reason-wrapper">
+              <label for="edit-entry-reason" class="block text-lg font-bold text-slate-800 mb-1.5">扣分原因／評分說明：</label>
+              <input id="edit-entry-reason" type="text" class="w-full text-[17px] p-3.5 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label for="edit-entry-note" class="block text-lg font-bold text-slate-800 mb-1.5">自由備註（選填）：</label>
+              <input id="edit-entry-note" type="text" placeholder="例如：3B 某生" class="w-full text-[17px] p-3.5 border-2 border-slate-300 rounded-2xl focus:outline-none focus:border-blue-500" />
+            </div>
+            <div id="edit-entry-question-wrapper" class="hidden">
+              <label for="edit-entry-question" class="block text-lg font-bold text-amber-950 mb-1.5">發起老師疑問說明：</label>
+              <input id="edit-entry-question" type="text" class="w-full text-[17px] p-3.5 border-2 border-amber-300 rounded-2xl bg-amber-50/40 focus:outline-none focus:border-amber-500" />
+            </div>
+            <button type="button" data-action="save-edit" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-black text-xl py-4 px-6 rounded-2xl border-b-4 border-blue-900 cursor-pointer">✓ 儲存修改</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="photo-viewer-modal" data-action="close-photo" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4">
+        <div class="max-w-[780px] w-full bg-white rounded-3xl border-2 border-slate-200 overflow-hidden">
+          <div class="bg-slate-100 px-6 py-4 border-b-2 border-slate-200 flex items-center justify-between gap-3">
+            <h3 class="text-xl font-black text-slate-900">🖼️ 學生作答相片</h3>
+            <button type="button" data-action="close-photo" class="bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-lg px-4 py-2 rounded-xl cursor-pointer">✕ 關閉</button>
+          </div>
+          <div class="p-5 space-y-4">
+            <div id="viewer-photo-container" class="w-full rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50"></div>
+            <div id="viewer-caption" class="text-lg font-bold text-slate-800 bg-slate-100 p-4 rounded-2xl"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="custom-confirm-modal" data-action="close-confirm" data-backdrop="true" class="hidden fixed inset-0 z-50 bg-slate-900/70 flex items-center justify-center p-4">
+        <div class="max-w-[500px] w-full bg-white rounded-3xl border-2 border-slate-200 p-6 space-y-5">
+          <h3 id="confirm-modal-title" class="text-xl sm:text-2xl font-black text-slate-900">確定要刪除呢一項？</h3>
+          <p id="confirm-modal-desc" class="text-lg text-slate-600">刪除後將無法復原。</p>
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <button type="button" data-action="close-confirm" class="bg-slate-200 hover:bg-slate-300 text-slate-900 font-black text-lg py-3.5 px-4 rounded-2xl cursor-pointer">取消</button>
+            <button id="confirm-modal-ok-btn" type="button" data-action="confirm-ok" class="bg-rose-600 hover:bg-rose-700 text-white font-black text-lg py-3.5 px-4 rounded-2xl cursor-pointer">確定刪除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast-area" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[700px] pointer-events-none flex flex-col gap-2"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

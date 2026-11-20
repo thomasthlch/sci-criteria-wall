@@ -1,0 +1,188 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  consensusBannerText,
+  findSimilarCase,
+  isSchoolEmail,
+  tallyVotes,
+  voteStatus,
+} from "../src/logic.js";
+import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
+import { renderLadderHtml, renderPendingHtml } from "../src/render.js";
+import { buildSeedContent } from "../src/seed-data.js";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const errors = [];
+
+function fail(message) {
+  errors.push(message);
+}
+
+function teacher(name, email) {
+  return { deduction: 1, displayName: name, email };
+}
+
+const agreed = tallyVotes({
+  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  bbb: { deduction: 1, displayName: "陳老師", email: "chan@tswgps.edu.hk" },
+});
+if (agreed.decidedDeduction !== 1) fail("兩位老師同扣 1 分應定案");
+if (agreed.counted.length !== 2) fail("應計算兩張學校帳戶的票");
+
+const split = tallyVotes({
+  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  bbb: { deduction: 2, displayName: "陳老師", email: "chan@tswgps.edu.hk" },
+});
+if (split.decidedDeduction !== null) fail("兩張不同扣分的票不應定案");
+
+const outsider = tallyVotes({
+  aaa: teacher("黃老師", "wong@tswgps.edu.hk"),
+  bbb: { deduction: 1, displayName: "外人", email: "person@gmail.com" },
+});
+if (outsider.decidedDeduction !== null || outsider.counted.length !== 1) {
+  fail("非學校電郵不應計票");
+}
+
+const seeded = tallyVotes({
+  seed: { deduction: 0, displayName: "示範", email: "seed@tswgps.edu.hk" },
+  aaa: { deduction: 0, displayName: "黃老師", email: "wong@tswgps.edu.hk" },
+});
+if (seeded.decidedDeduction !== null) fail("示範票不應令一位真老師就定案");
+
+if (voteStatus({}).label.includes("2/3")) fail("投票進度不應寫 2/3");
+if (!voteStatus({}).label.includes("2 票同意同一扣分就定案")) fail("應寫明 2 票同意就定案");
+if (consensusBannerText(1, 2).includes("2/3")) fail("定案橫額不應寫 2/3");
+
+if (!isSchoolEmail("wong@tswgps.edu.hk", true)) fail("學校電郵應通過");
+if (isSchoolEmail("wong@tswgps.edu.hk", false)) fail("未驗證電郵應拒絕");
+if (isSchoolEmail("wong@gmail.com", true)) fail("其他網域應拒絕");
+if (isSchoolEmail("wong@tswgps.edu.hk.bad.com", true)) fail("假網域應拒絕");
+if (isSchoolEmail("@tswgps.edu.hk", true)) fail("空白帳號應拒絕");
+
+const seed = buildSeedContent();
+if (seed.length !== 3) fail(`示範題應有 3 題，實際 ${seed.length}`);
+if (!seed[0].title.includes("雞蛋模擬地球")) fail("第一題應為雞蛋模擬地球");
+if (seed[0].parts.reduce((sum, part) => sum + part.maxScore, 0) !== 4) fail("雞蛋題應共 4 分");
+const serialized = JSON.stringify(seed);
+if (serialized.includes("data:image") || serialized.includes("downloadURL")) {
+  fail("種子資料不應包含相片");
+}
+const eggHints = seed[0].parts[0].hints;
+const oneSided = findSimilarCase("雞蛋有蛋殼、蛋白、蛋黃三層", eggHints, []);
+if (!oneSided || oneSided.item.deduction !== 1) fail("單邊三層應提示 -1");
+const contrasted = findSimilarCase("蛋殼對應地殼", eggHints, []);
+if (contrasted) fail("已寫地殼對應時不應誤中單邊比較提示");
+const pendingHit = findSimilarCase("液態外核會流動", [], [
+  { text: "可以模擬地球液態外核", author: { displayName: "示範擬問" } },
+]);
+if (!pendingHit || pendingHit.kind !== "pending") fail("應提示已有待投票的類似答案");
+
+const state = {
+  user: { uid: "u1", displayName: "黃老師", email: "wong@tswgps.edu.hk" },
+  questions: [{ id: "q1", title: "第 1 題：雞蛋模擬地球", totalScore: 4, pendingCount: 1 }],
+  parts: [{ id: "sp1", name: "相同點", maxScore: 2, order: 0, pendingCount: 1 }],
+  criteria: [{
+    id: "r1",
+    deduction: 1,
+    text: "只寫三層 <script>",
+    reason: "欠完整",
+    note: "3A",
+    source: "direct",
+    sourceLabel: "黃老師 直接新增",
+    createdBy: { displayName: "黃老師", email: "wong@tswgps.edu.hk" },
+    createdAt: 1700000000000,
+    changelog: [{ at: 1700000001000, displayName: "黃老師", summary: "修改內容" }],
+  }],
+  cases: [{
+    id: "pv1",
+    text: "答案 <b>",
+    note: "",
+    question: "扣幾多？",
+    author: { uid: "u2", displayName: "李老師", email: "lee@tswgps.edu.hk" },
+    votes: { u2: { deduction: 1, displayName: "李老師", email: "lee@tswgps.edu.hk" } },
+  }],
+  hints: [],
+  activeQuestionId: "q1",
+  activeSubPartId: "sp1",
+  questionsReady: true,
+  partsReady: true,
+  childrenReady: true,
+};
+const pendingHtml = renderPendingHtml(state).html;
+if (!pendingHtml.includes("2 票同意同一扣分就定案")) fail("待投票區應說明 2 票定案");
+if (pendingHtml.includes("2/3") || pendingHtml.includes("模擬同事")) fail("待投票區殘留示範投票文案");
+if (pendingHtml.includes("<b>")) fail("待投票文字未被跳脫");
+if (!pendingHtml.includes("&lt;b&gt;")) fail("應跳脫答案裡的標籤");
+const ladder = renderLadderHtml(state);
+const directAdds = ladder.html.match(/open-direct/g) || [];
+if (directAdds.length !== 3) fail(`2 分部分應有 3 個扣分欄，實際 ${directAdds.length}`);
+if (!ladder.html.includes("黃老師 直接新增") || !ladder.html.includes("修改紀錄")) {
+  fail("階梯應顯示作者與修改紀錄");
+}
+if (ladder.html.includes("<script>")) fail("階梯文字未被跳脫");
+
+for (const bad of [
+  ["dashboards"],
+  ["sci_criteria_wall", "wall", "scores"],
+  ["sci_criteria_wall", "deadline_fighter"],
+]) {
+  try {
+    assertSafeSegments(bad);
+    fail(`應拒絕路徑 ${bad.join("/")}`);
+  } catch {
+    // expected
+  }
+}
+try {
+  assertStoragePath("classes/secret.png");
+  fail("應拒絕 Storage 路徑離開 sci_criteria_wall");
+} catch {
+  // expected
+}
+if (assertStoragePath("sci_criteria_wall/teacher/photo.jpg") !== "sci_criteria_wall/teacher/photo.jpg") {
+  fail("合法 Storage 路徑應原樣通過");
+}
+
+const banned = ["模擬同事", "正在辨識", "陳老師 (已登入)", "2/3 共識", "askResetDemoData", "startSimulatedOCR"];
+const forbiddenCollections = ["dashboards", "eservice", "scores", "classes", "schemas", "deadline_fighter"];
+function walk(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git") continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full, files);
+    else if (/\.(js|html|css|mjs)$/.test(entry.name)) files.push(full);
+  }
+  return files;
+}
+for (const file of walk(path.join(root, "src")).concat(path.join(root, "index.html"))) {
+  const text = fs.readFileSync(file, "utf8");
+  for (const phrase of banned) {
+    if (text.includes(phrase)) fail(`${path.relative(root, file)} 含有「${phrase}」`);
+  }
+  if (path.basename(file) !== "paths.js") {
+    for (const name of forbiddenCollections) {
+      if (text.includes(name)) fail(`${path.relative(root, file)} 提及了禁用集合 ${name}`);
+    }
+  }
+}
+const rules = fs.readFileSync(path.join(root, "firebase/firestore.sci_criteria_wall.rules.fragment"), "utf8");
+const storageRules = fs.readFileSync(path.join(root, "firebase/storage.sci_criteria_wall.rules.fragment"), "utf8");
+if (rules.includes("rules_version") || storageRules.includes("rules_version")) {
+  fail("規則片段不應是可單獨部署的完整規則檔");
+}
+if (!rules.includes("match /sci_criteria_wall/{document=**}")) fail("Firestore 片段缺少準則牆 match");
+if (!storageRules.includes("match /sci_criteria_wall/{allPaths=**}")) fail("Storage 片段缺少準則牆 match");
+const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
+if (!workflow.includes("upload-pages-artifact") || !workflow.includes("deploy-pages")) {
+  fail("Pages workflow 應使用 upload-pages-artifact 與 deploy-pages");
+}
+const viteConfig = fs.readFileSync(path.join(root, "vite.config.js"), "utf8");
+if (!viteConfig.includes('base: "./"')) fail("vite base 應為 ./");
+if (fs.existsSync(path.join(root, "firebase.json"))) fail("不應提供可直接部署的 firebase.json");
+
+if (errors.length) {
+  console.error(errors.join("\n"));
+  process.exit(1);
+}
+console.log(`準則牆檢查通過：${seed.length} 題示範、2 票定案、規則片段與 Pages workflow。`);
