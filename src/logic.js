@@ -296,13 +296,35 @@ export function showPendingPanel({ folded, pendingCount }) {
   return !folded;
 }
 
-export function ladderGridClass(visibleCount) {
-  const count = Number(visibleCount) || 0;
-  if (count <= 1) return "grid grid-cols-1 gap-3 items-start";
-  if (count === 2) return "grid grid-cols-1 md:grid-cols-2 gap-3 items-start";
-  if (count === 3) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start";
-  if (count === 4) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 items-start";
-  return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-start";
+export function defaultDeductAmounts(maxScore) {
+  const max = Math.max(0, Math.round(Number(maxScore) || 0));
+  const half = Math.round(max / 2);
+  return [...new Set([0, half, max])].sort((left, right) => left - right);
+}
+
+export function visibleDeductAmounts(maxScore, criteria) {
+  const max = Math.max(0, Math.round(Number(maxScore) || 0));
+  const amounts = new Set(defaultDeductAmounts(max));
+  for (const item of criteria || []) {
+    const deduction = Number(item?.deduction);
+    if (!Number.isInteger(deduction) || deduction < 0 || deduction > max) continue;
+    amounts.add(deduction);
+  }
+  return [...amounts].sort((left, right) => left - right);
+}
+
+export function ladderGridClass(visibleCount, tight = false) {
+  const count = Math.max(1, Number(visibleCount) || 1);
+  if (!tight) {
+    if (count <= 1) return "grid grid-cols-1 gap-3 items-start";
+    if (count === 2) return "grid grid-cols-1 lg:grid-cols-2 gap-3 items-start";
+    return "grid grid-cols-1 lg:grid-cols-3 gap-3 items-start";
+  }
+  if (count <= 2) return "grid grid-cols-1 md:grid-cols-2 gap-2 items-start";
+  if (count === 3) return "grid grid-cols-1 md:grid-cols-3 gap-2 items-start";
+  if (count === 4) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2 items-start";
+  if (count === 5) return "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-2 items-start";
+  return "grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-2 items-start";
 }
 
 export function pushChange(log, entry, cap = 6) {

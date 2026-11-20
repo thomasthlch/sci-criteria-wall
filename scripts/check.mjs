@@ -6,6 +6,8 @@ import {
   SEED_QUESTION_TITLES,
   canDeleteQuestion,
   consensusBannerText,
+  defaultDeductAmounts,
+  visibleDeductAmounts,
   explainDataError,
   findSimilarCase,
   isAllowedAccount,
@@ -24,7 +26,7 @@ import {
   WALL_TEACHER_EMAILS,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
-import { deductionChoicesHtml, renderLadderHtml, renderPendingHtml } from "../src/render.js";
+import { deductionChoicesHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -169,10 +171,22 @@ if (!pendingHtml.includes("2 票同意同一扣分就定案")) fail("待投票�
 if (pendingHtml.includes("2/3") || pendingHtml.includes("模擬同事")) fail("待投票區殘留示範投票文案");
 if (pendingHtml.includes("<b>")) fail("待投票文字未被跳脫");
 if (!pendingHtml.includes("&lt;b&gt;")) fail("應跳脫答案裡的標籤");
+if (defaultDeductAmounts(2).join(",") !== "0,1,2") fail("2 分部分預設應為 0/-1/-2");
+if (defaultDeductAmounts(4).join(",") !== "0,2,4") fail("4 分部分預設應為 0/-2/-4");
+if (defaultDeductAmounts(1).join(",") !== "0,1") fail("1 分部分半分與全扣重疊，只留 0 同 -1");
+if (defaultDeductAmounts(3).join(",") !== "0,2,3") fail("3 分部分半分應四捨五入為 -2");
+if (visibleDeductAmounts(4, [{ deduction: 1 }]).join(",") !== "0,1,2,4") {
+  fail("已有 -1 標準時先顯示額外欄");
+}
 const ladder = renderLadderHtml(state);
-const directAdds = ladder.html.match(/open-direct/g) || [];
-if (directAdds.length !== 1) fail(`只有 -1 有標準時應只顯示 1 欄，實際 ${directAdds.length}`);
-if (ladder.html.includes("未有-0") || ladder.html.includes("未有-2")) fail("空扣分欄不應渲染");
+const directAdds = ladder.html.match(/data-deduction="(\d+)"/g) || [];
+if (directAdds.join(",") !== 'data-deduction="0",data-deduction="1",data-deduction="2"') {
+  fail(`2 分部分應固定顯示 0/-1/-2，實際 ${directAdds.join(",")}`);
+}
+if (!ladder.html.includes("未有-0 分") || !ladder.html.includes("未有-2 分")) fail("預設空欄應保留");
+if (!ladder.gridClass.includes("lg:grid-cols-3") || ladder.gridClass.includes("gap-2")) {
+  fail("只有預設欄時應保持較寬");
+}
 const sparse = renderLadderHtml({
   ...state,
   parts: [{ id: "sp1", name: "相同點", maxScore: 4, order: 0 }],
@@ -182,9 +196,38 @@ const sparse = renderLadderHtml({
     { ...state.criteria[0], id: "r4", deduction: 4, changelog: [] },
   ],
 });
-if ((sparse.html.match(/open-direct/g) || []).length !== 3) fail("0/-2/-4 應並排成 3 欄");
-if (!sparse.gridClass.includes("xl:grid-cols-3")) fail("三個有內容的欄應同一行");
-if (sparse.html.includes("未有")) fail("缺了的 -1/-3 不應留空欄");
+if ((sparse.html.match(/open-direct/g) || []).length !== 3) fail("4 分部分預設應為 0/-2/-4 三欄");
+if (sparse.html.includes("data-deduction=\"1\"") || sparse.html.includes("data-deduction=\"3\"")) {
+  fail("未有標準的 -1/-3 不應佔欄");
+}
+if (!sparse.gridClass.includes("lg:grid-cols-3")) fail("三個預設欄應同一行");
+const extra = renderLadderHtml({
+  ...state,
+  parts: [{ id: "sp1", name: "相同點", maxScore: 4, order: 0 }],
+  criteria: [
+    { ...state.criteria[0], id: "r0", deduction: 0 },
+    { ...state.criteria[0], id: "r1", deduction: 1, changelog: [] },
+    { ...state.criteria[0], id: "r2", deduction: 2, changelog: [] },
+    { ...state.criteria[0], id: "r4", deduction: 4, changelog: [] },
+  ],
+});
+if (!extra.html.includes("data-deduction=\"1\"")) fail("有 -1 標準時應多出一欄");
+if (!extra.gridClass.includes("xl:grid-cols-4") || !extra.gridClass.includes("gap-2")) {
+  fail("多出的欄應收窄並盡量同一行");
+}
+const stack = renderPartsStack({
+  ...state,
+  folded: true,
+  parts: [
+    { id: "sp1", name: "相同點", maxScore: 2, order: 0, pendingCount: 0 },
+    { id: "sp2", name: "不相同點", maxScore: 2, order: 1, pendingCount: 0 },
+  ],
+  boards: {
+    sp1: { criteria: state.criteria, cases: [], hints: [], ready: true },
+    sp2: { criteria: [], cases: [], hints: [], ready: true },
+  },
+});
+if (!stack.includes("相同點") || !stack.includes("不相同點")) fail("多於一個分部應上下連續顯示");
 const picker = deductionChoicesHtml(4, 0, "select-direct-deduction");
 for (const label of ["-0 分", "-1 分", "-2 分", "-3 分", "-4 分"]) {
   if (!picker.includes(label)) fail(`新增標準仍應可選 ${label}`);

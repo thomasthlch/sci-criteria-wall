@@ -5,11 +5,13 @@ import {
   escapeHtml,
   formatTime,
   getDeductionBadgeInfo,
+  defaultDeductAmounts,
   ladderGridClass,
   partChipLabel,
   questionTotalScore,
   showPartPicker,
   showPendingPanel,
+  visibleDeductAmounts,
   safeHttpsUrl,
   voteStatus,
 } from "./logic.js";
@@ -88,12 +90,16 @@ function changelogHtml(log) {
   return `<details class="text-xs text-slate-400"><summary class="cursor-pointer">修改紀錄</summary><ul class="mt-1 space-y-0.5 list-disc pl-4">${items}</ul></details>`;
 }
 
-function voteButtonsHtml(item, maxScore) {
+function partAttr(state) {
+  return escapeHtml(state.activeSubPartId || "");
+}
+
+function voteButtonsHtml(item, maxScore, state) {
   let html = "";
   for (let deduction = 0; deduction <= maxScore; deduction += 1) {
     const info = getDeductionBadgeInfo(deduction, maxScore);
     html += `
-      <button type="button" data-action="cast-vote" data-id="${escapeHtml(item.id)}" data-deduction="${deduction}" class="w-full py-3 px-4 rounded-xl font-black text-base sm:text-lg border-b-4 transition text-left flex items-center justify-between cursor-pointer ${info.btnVote}">
+      <button type="button" data-action="cast-vote" data-part-id="${partAttr(state)}" data-id="${escapeHtml(item.id)}" data-deduction="${deduction}" class="w-full py-3 px-4 rounded-xl font-black text-base sm:text-lg border-b-4 transition text-left flex items-center justify-between cursor-pointer ${info.btnVote}">
         <span>${info.fullLabel}</span>
         <span class="text-sm opacity-90">撳此投票 →</span>
       </button>
@@ -139,8 +145,8 @@ export function renderPendingHtml(state) {
                   ${item.note ? `<span class="bg-white border border-amber-300 text-slate-700 font-bold text-sm px-2.5 py-1 rounded-xl">🏷️ ${escapeHtml(item.note)}</span>` : ""}
                 </div>
                 <div class="flex items-center gap-1.5">
-                  <button type="button" data-action="open-edit" data-type="pending" data-id="${escapeHtml(item.id)}" class="bg-white hover:bg-amber-100 text-slate-800 border border-amber-300 font-bold text-sm px-2.5 py-1.5 rounded-xl cursor-pointer">✏️ 修改</button>
-                  <button type="button" data-action="ask-delete" data-type="pending" data-id="${escapeHtml(item.id)}" class="bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm px-2.5 py-1.5 rounded-xl cursor-pointer" title="刪除此項目">🗑️</button>
+                  <button type="button" data-action="open-edit" data-part-id="${partAttr(state)}" data-type="pending" data-id="${escapeHtml(item.id)}" class="bg-white hover:bg-amber-100 text-slate-800 border border-amber-300 font-bold text-sm px-2.5 py-1.5 rounded-xl cursor-pointer">✏️ 修改</button>
+                  <button type="button" data-action="ask-delete" data-part-id="${partAttr(state)}" data-type="pending" data-id="${escapeHtml(item.id)}" class="bg-white hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-sm px-2.5 py-1.5 rounded-xl cursor-pointer" title="刪除此項目">🗑️</button>
                 </div>
               </div>
               ${photoHtml(item.photo, "pending", item.id)}
@@ -162,7 +168,7 @@ export function renderPendingHtml(state) {
                 <div class="text-sm font-bold text-slate-700">${escapeHtml(status.detail)}</div>
               </div>
               ${mine ? `<div class="text-base font-black text-blue-950">✓ 你已投「-${mine.deduction} 分」。可以改投；另一位已登入老師投同一個扣分就會定案。</div>` : `<div class="text-sm font-black text-slate-800">請投票決定扣幾多分（2 票同意同一個數就定案）：</div>`}
-              <div class="flex flex-col gap-2">${voteButtonsHtml(item, Number(part.maxScore) || 0)}</div>
+              <div class="flex flex-col gap-2">${voteButtonsHtml(item, Number(part.maxScore) || 0, state)}</div>
               ${changelogHtml(item.changelog)}
             </div>
           </article>
@@ -188,24 +194,17 @@ export function renderLadderHtml(state) {
     return { heading: "", gridClass: ladderGridClass(1), html: `<div class="text-sm text-slate-500 font-bold">正在載入扣分欄…</div>` };
   }
   const criteria = [...state.criteria].sort(byNewest);
-  const occupied = [];
-  for (let deduction = 0; deduction <= maxScore; deduction += 1) {
-    const rules = criteria.filter((item) => Number(item.deduction) === deduction);
-    if (rules.length) occupied.push({ deduction, rules });
-  }
-  if (!occupied.length) {
-    return {
-      heading: "",
-      gridClass: ladderGridClass(1),
-      html: `<div class="text-sm font-bold text-slate-500">未有標準。可用上方「直接新增標準」或「上載答案」加入，並揀扣幾分。</div>`,
-    };
-  }
+  const defaults = new Set(defaultDeductAmounts(maxScore));
+  const amounts = visibleDeductAmounts(maxScore, criteria);
+  const tight = amounts.length > defaults.size;
   let html = "";
-  for (const { deduction, rules } of occupied) {
+  for (const deduction of amounts) {
     const info = getDeductionBadgeInfo(deduction, maxScore);
     const actual = Math.max(0, maxScore - deduction);
+    const rules = criteria.filter((item) => Number(item.deduction) === deduction);
     const mark = deduction === 0 ? "🟢" : deduction >= maxScore ? "🔴" : "🟡";
-    const cards = rules.map((rule) => `
+    const cards = rules.length
+      ? rules.map((rule) => `
           <article id="criterion-${escapeHtml(rule.id)}" tabindex="-1" class="animate-card ${info.cardBorder} border rounded-xl p-2.5 space-y-1 scroll-mt-24 outline-none">
             <div class="text-[15px] sm:text-base font-bold text-slate-900 leading-snug break-words">${escapeHtml(rule.text)}</div>
             ${rule.reason ? `<div class="text-xs sm:text-sm text-slate-600 leading-snug">💡 ${escapeHtml(rule.reason)}</div>` : ""}
@@ -213,14 +212,15 @@ export function renderLadderHtml(state) {
             <div class="flex items-center justify-between gap-2 pt-0.5">
               <div class="min-w-0 text-[11px] leading-tight text-slate-400 truncate">${escapeHtml(criterionMeta(rule))}</div>
               <div class="flex items-center shrink-0">
-                <button type="button" data-action="open-edit" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-slate-500 hover:text-slate-900 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="修改／調整扣分" aria-label="修改／調整扣分">✏️</button>
-                <button type="button" data-action="ask-delete" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="刪除此判例" aria-label="刪除此判例">🗑️</button>
+                <button type="button" data-action="open-edit" data-part-id="${partAttr(state)}" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-slate-500 hover:text-slate-900 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="修改／調整扣分" aria-label="修改／調整扣分">✏️</button>
+                <button type="button" data-action="ask-delete" data-part-id="${partAttr(state)}" data-type="rule" data-id="${escapeHtml(rule.id)}" class="text-rose-500 hover:text-rose-700 font-bold text-sm px-1.5 py-0.5 rounded-lg cursor-pointer" title="刪除此判例" aria-label="刪除此判例">🗑️</button>
               </div>
             </div>
             ${photoHtml(rule.photo, "rule", rule.id)}
             ${changelogHtml(rule.changelog)}
           </article>
-        `).join("");
+        `).join("")
+      : `<div class="border border-dashed border-slate-200 rounded-xl px-3 py-3 text-center text-sm text-slate-400">未有${info.shortLabel}</div>`;
     html += `
       <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden flex flex-col">
         <div class="${info.headerBg} border-b px-3 py-2 flex items-center justify-between gap-2">
@@ -229,12 +229,50 @@ export function renderLadderHtml(state) {
         </div>
         <div class="p-2.5 space-y-2">
           ${cards}
-          <button type="button" data-action="open-direct" data-deduction="${deduction}" class="w-full py-1.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50/60 text-slate-500 hover:text-blue-900 font-bold text-sm cursor-pointer">＋ ${info.shortLabel}</button>
+          <button type="button" data-action="open-direct" data-part-id="${partAttr(state)}" data-deduction="${deduction}" class="w-full py-1.5 px-3 rounded-xl border border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50/60 text-slate-500 hover:text-blue-900 font-bold text-sm cursor-pointer">＋ ${info.shortLabel}</button>
         </div>
       </div>
     `;
   }
-  return { heading: "", gridClass: ladderGridClass(occupied.length), html };
+  return { heading: "", gridClass: ladderGridClass(amounts.length, tight), html };
+}
+
+export function renderPartsStack(state) {
+  const parts = [...(state.parts || [])].sort(byOrder);
+  if (!parts.length) return "";
+  return parts.map((part, index) => {
+    const board = state.boards?.[part.id];
+    const local = {
+      ...state,
+      activeSubPartId: part.id,
+      criteria: board?.criteria || (part.id === state.activeSubPartId ? state.criteria : []),
+      cases: board?.cases || (part.id === state.activeSubPartId ? state.cases : []),
+      hints: board?.hints || (part.id === state.activeSubPartId ? state.hints : []),
+      childrenReady: board ? !!board.ready : part.id === state.activeSubPartId && !!state.childrenReady,
+    };
+    const pendingCount = local.childrenReady ? local.cases.length : Number(part.pendingCount || 0);
+    const pending = renderPendingHtml(local);
+    const ladder = renderLadderHtml(local);
+    const showPending = showPendingPanel({ folded: state.folded !== false, pendingCount });
+    const heading = parts.length > 1
+      ? `<h3 class="text-base sm:text-lg font-black text-slate-900">${escapeHtml(partChipLabel(part, index))}</h3>`
+      : "";
+    return `
+      <section id="part-section-${escapeHtml(part.id)}" class="space-y-3">
+        ${heading}
+        ${showPending && pending && pending.html ? `
+          <section class="bg-white border border-amber-300 rounded-3xl overflow-hidden">
+            <div class="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2">
+              <h3 class="text-base font-black text-amber-950">🟡 待投票擬問${pending.label ? ` · ${escapeHtml(pending.label)}` : ""}</h3>
+              <span class="${pending.empty ? "bg-slate-200 text-slate-700" : "bg-amber-400 text-slate-950"} font-black text-sm px-3 py-1 rounded-full">${escapeHtml(pending.countText || "")}</span>
+            </div>
+            <div class="p-3 sm:p-4">${pending.html}</div>
+          </section>
+        ` : ""}
+        <div class="${ladder.gridClass}">${ladder.html}</div>
+      </section>
+    `;
+  }).join("");
 }
 
 export function deductionChoicesHtml(maxScore, selected, action) {
@@ -350,26 +388,12 @@ export function fillBoard(state) {
       : "";
   }
 
-  const pending = renderPendingHtml(state);
-  const pendingLabel = document.getElementById("pending-subpart-label");
-  const pendingCount = document.getElementById("pending-count-badge");
-  const pendingBox = document.getElementById("pending-votes-container");
-  const activePart = parts.find((part) => part.id === state.activeSubPartId);
-  const livePending = state.childrenReady ? state.cases.length : Number(activePart?.pendingCount || 0);
-  if (pendingSection) {
-    pendingSection.hidden = showEmpty || !showPendingPanel({ folded: state.folded !== false, pendingCount: livePending });
+  const stack = document.getElementById("parts-stack");
+  if (pendingSection) pendingSection.hidden = true;
+  if (stack) {
+    stack.hidden = showEmpty;
+    stack.innerHTML = showEmpty ? "" : renderPartsStack(state);
   }
-  if (pendingLabel) {
-    pendingLabel.textContent = pending.label || "";
-    pendingLabel.hidden = !pending.label;
-  }
-  if (pendingCount) {
-    pendingCount.textContent = pending.countText || "";
-    pendingCount.className = pending.empty
-      ? "bg-slate-200 text-slate-700 font-black text-base px-3.5 py-1 rounded-full"
-      : "bg-amber-400 text-slate-950 font-black text-base px-3.5 py-1 rounded-full";
-  }
-  if (pendingBox) pendingBox.innerHTML = pending.html || "";
 
   const ladder = renderLadderHtml(state);
   const ladderHeading = document.getElementById("ladder-section-heading");
