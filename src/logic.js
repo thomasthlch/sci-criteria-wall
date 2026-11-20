@@ -213,6 +213,63 @@ export function similarCriteria(text, criteria, { threshold = SIMILAR_CRITERIA_T
     .slice(0, limit);
 }
 
+function criterionFieldScore(normalized, item) {
+  const fields = [
+    ["text", item?.text],
+    ["reason", item?.reason],
+    ["note", item?.note],
+  ];
+  let best = { key: "text", value: "", score: 0 };
+  for (const [key, value] of fields) {
+    const score = bigramSimilarity(normalized, normalizeCriterionText(value));
+    if (score > best.score) best = { key, value: String(value || ""), score };
+  }
+  return best;
+}
+
+export function questionCriterionEntries(state) {
+  const parts = [...(state?.parts || [])].sort(byOrder);
+  const entries = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index];
+    const board = state?.boards?.[part.id];
+    const criteria = board
+      ? (board.criteria || [])
+      : (part.id === state?.activeSubPartId ? (state?.criteria || []) : []);
+    for (const item of criteria) {
+      entries.push({
+        item,
+        part,
+        partIndex: index,
+        partLabel: partChipLabel(part, index),
+      });
+    }
+  }
+  return entries;
+}
+
+export function markingMatches(text, entries, { threshold = SIMILAR_CRITERIA_THRESHOLD, limit = SIMILAR_CRITERIA_LIMIT } = {}) {
+  const normalized = normalizeCriterionText(text);
+  if (normalized.length < 4) return [];
+  return (entries || [])
+    .map((entry) => {
+      const item = entry?.item || entry;
+      const best = criterionFieldScore(normalized, item);
+      return {
+        item,
+        part: entry?.part,
+        partIndex: entry?.partIndex,
+        partLabel: entry?.partLabel || "",
+        score: best.score,
+        matchedOn: best.key,
+        matchedText: best.value,
+      };
+    })
+    .filter((row) => row.score >= threshold && row.item?.id)
+    .sort((left, right) => right.score - left.score || String(left.item.id).localeCompare(String(right.item.id)))
+    .slice(0, limit);
+}
+
 export function findSimilarCase(text, hints, cases) {
   const value = String(text || "").trim();
   if (!value) return null;

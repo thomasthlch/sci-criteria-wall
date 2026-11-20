@@ -7,7 +7,10 @@ import {
   getDeductionBadgeInfo,
   defaultDeductAmounts,
   ladderGridClass,
+  markingMatches,
+  normalizeCriterionText,
   partChipLabel,
+  questionCriterionEntries,
   questionTotalScore,
   showPartPicker,
   showPendingPanel,
@@ -275,6 +278,53 @@ export function renderPartsStack(state) {
   }).join("");
 }
 
+export function markingResultsHtml(matches, { partCount = 1 } = {}) {
+  if (!matches?.length) {
+    return `<div class="text-sm font-bold text-slate-500">未有相近標準。這次搜尋不會改任何分數。</div>`;
+  }
+  const several = Number(partCount) > 1;
+  const rows = matches.map((row) => {
+    const maxScore = Number(row.part?.maxScore) || 0;
+    const deduction = Number(row.item?.deduction) || 0;
+    const info = getDeductionBadgeInfo(deduction, maxScore);
+    const actual = Math.max(0, maxScore - deduction);
+    const where = several && row.partLabel ? `${escapeHtml(row.partLabel)} · ` : "";
+    const detail = row.matchedOn && row.matchedOn !== "text" && row.matchedText
+      ? `<div class="text-xs text-slate-500 mt-0.5">對照${row.matchedOn === "note" ? "備註" : "說明"}：${escapeHtml(row.matchedText)}</div>`
+      : "";
+    return `<button type="button" data-action="focus-criterion" data-part-id="${escapeHtml(row.part?.id || "")}" data-id="${escapeHtml(row.item?.id || "")}" class="w-full text-left bg-white hover:bg-blue-50 border border-slate-200 rounded-xl px-3 py-2 cursor-pointer">
+      <div class="flex items-start justify-between gap-2">
+        <div class="text-sm font-bold text-slate-900 leading-snug">${escapeHtml(row.item?.text || row.matchedText || "")}</div>
+        <span class="shrink-0 text-xs font-black px-2 py-0.5 rounded-full ${info.badgeBg}">${escapeHtml(info.shortLabel)}</span>
+      </div>
+      <div class="text-xs font-bold text-slate-600 mt-0.5">${where}應俾 ${actual}/${maxScore} · 去睇呢條</div>
+      ${detail}
+    </button>`;
+  }).join("");
+  return `<div class="text-sm font-black text-slate-700">相近標準（只供對照，不會改分數）</div>${rows}`;
+}
+
+export function paintMarkingResults(state) {
+  const box = document.getElementById("marking-results");
+  const input = document.getElementById("marking-query");
+  if (!box || !input) return;
+  if (!state?.questions?.length) {
+    input.value = "";
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const text = input.value || "";
+  if (normalizeCriterionText(text).length < 4) {
+    box.classList.add("hidden");
+    box.innerHTML = "";
+    return;
+  }
+  const matches = markingMatches(text, questionCriterionEntries(state));
+  box.classList.remove("hidden");
+  box.innerHTML = markingResultsHtml(matches, { partCount: (state.parts || []).length });
+}
+
 export function deductionChoicesHtml(maxScore, selected, action) {
   let html = "";
   for (let deduction = 0; deduction <= maxScore; deduction += 1) {
@@ -417,4 +467,5 @@ export function fillBoard(state) {
       banner.classList.add("hidden");
     }
   }
+  paintMarkingResults(state);
 }

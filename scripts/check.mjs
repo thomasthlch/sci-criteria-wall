@@ -15,7 +15,9 @@ import {
   isSeedCase,
   isSeedCriterion,
   openWallAfterCleanup,
+  markingMatches,
   partChipLabel,
+  questionCriterionEntries,
   readFolded,
   showPartPicker,
   showPendingPanel,
@@ -26,7 +28,7 @@ import {
   WALL_TEACHER_EMAILS,
 } from "../src/logic.js";
 import { assertSafeSegments, assertStoragePath } from "../src/paths.js";
-import { deductionChoicesHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
+import { deductionChoicesHtml, markingResultsHtml, renderLadderHtml, renderPartsStack, renderPendingHtml } from "../src/render.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const errors = [];
@@ -372,6 +374,51 @@ if (near.length > SIMILAR_CRITERIA_LIMIT) fail("相近標準最多三條");
 if (similarCriteria("白", [{ id: "near", text: "北極熊是白色像冰雪" }]).length) {
   fail("太短的輸入不應提示");
 }
+if (similarCriteria("只寫三層沒有對應", [{ id: "r", text: "光合作用會產生氧氣", reason: "只寫三層沒有對應" }]).length) {
+  fail("新增標準的相近提示仍只看標準正文");
+}
+const markingEntries = questionCriterionEntries({
+  activeSubPartId: "sp1",
+  criteria: [{ id: "active", text: "有三層", deduction: 0 }],
+  parts: [
+    { id: "sp1", name: "相似", maxScore: 2, order: 0 },
+    { id: "sp2", name: "不相似", maxScore: 4, order: 1 },
+  ],
+  boards: {
+    sp1: { criteria: [{ id: "a", deduction: 1, text: "蛋殼是地殼，蛋白是地幔" }] },
+    sp2: { criteria: [{ id: "b", deduction: 2, text: "沒有寫不同的地方", reason: "只寫相同點" }] },
+  },
+});
+if (markingEntries.some((row) => row.item.id === "active")) fail("搜尋應使用各分部自己的標準");
+if (markingEntries.some((row) => row.part.id === "sp2" && row.item.id !== "b")) fail("空白或另一分部不應混入第 1 部分");
+const pasted = markingMatches("我覺得蛋殼是地殼，蛋白是地幔，結構一樣。", markingEntries);
+if (pasted[0]?.item.id !== "a") fail("貼上的學生答案應對上最相近的標準");
+if (pasted.some((row) => row.item.id === "b")) fail("不相關的分部標準不應出現");
+const byReason = markingMatches("學生只寫相同點", markingEntries);
+if (byReason[0]?.item.id !== "b" || byReason[0]?.matchedOn !== "reason") fail("應可對上標準的說明");
+if (markingMatches("蛋", markingEntries).length) fail("太短的答案不應給分建議");
+if (markingMatches("光合作用會產生氧氣和葡萄糖", markingEntries).length) fail("無關答案不應給分建議");
+const crowded = markingMatches("蛋殼是地殼蛋白是地幔", [
+  ...markingEntries,
+  { item: { id: "c", deduction: 0, text: "蛋殼是地殼蛋白是地幔補充" }, part: markingEntries[0].part, partLabel: markingEntries[0].partLabel },
+  { item: { id: "d", deduction: 0, text: "蛋殼是地殼蛋白是地幔再補充" }, part: markingEntries[0].part, partLabel: markingEntries[0].partLabel },
+  { item: { id: "e", deduction: 0, text: "蛋殼是地殼蛋白是地幔第三條" }, part: markingEntries[0].part, partLabel: markingEntries[0].partLabel },
+]);
+if (crowded.length !== SIMILAR_CRITERIA_LIMIT) fail("查分結果應保持短清單");
+const before = markingEntries[0].item.text;
+markingMatches("蛋殼是地殼，蛋白是地幔", markingEntries);
+if (markingEntries[0].item.text !== before) fail("查分不應改動已儲存的標準");
+const markingHtml = markingResultsHtml(pasted, { partCount: 2 });
+if (!markingHtml.includes("應俾 1/2") || !markingHtml.includes("-1 分") || !markingHtml.includes("第 1 部分：相似")) {
+  fail("應顯示扣分、應得分數和所屬分部");
+}
+if (!markingHtml.includes('data-action="focus-criterion"') || !markingHtml.includes('data-id="a"')) {
+  fail("應可跳到對應的標準卡");
+}
+if (markingHtml.includes("不相似")) fail("未命中的分部不應出現在結果");
+const reasonHtml = markingResultsHtml(byReason, { partCount: 2 });
+if (!reasonHtml.includes("應俾 2/4") || !reasonHtml.includes("對照說明")) fail("對上說明時應顯示該分部的應得分數");
+if (!markingResultsHtml([], { partCount: 1 }).includes("不會改任何分數")) fail("沒有相近標準時應說明不會改分數");
 if (fs.existsSync(path.join(root, "src/seed-data.js"))) fail("不應再附帶示範題資料");
 const workflow = fs.readFileSync(path.join(root, ".github/workflows/pages.yml"), "utf8");
 if (!workflow.includes("upload-pages-artifact") || !workflow.includes("deploy-pages")) {
